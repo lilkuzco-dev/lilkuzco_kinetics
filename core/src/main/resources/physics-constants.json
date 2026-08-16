@@ -1,0 +1,601 @@
+{
+  "_doc": {
+    "purpose": "Single source of every physical constant in lilkuzco_kinetics. Invariant I9 forbids physics literals in code; the sim core loads this file and fails hard if a key is missing.",
+    "schema": "Each leaf is an object: { value, units, real_value?, scale_factor?, source_note }. 'value' is what the sim uses. When 'real_value' is present the constant is scaled for Minecraft and 'scale_factor' is the auditable mapping between them (value = real_value / scale_factor unless the note says otherwise).",
+    "scale_philosophy": "One block = one metre and gravity is Earth's, so in-world flight runs in true SI and player intuition holds. Exactly two deliberate compressions exist, both recorded here and both rendered by the I11 scale audit: the atmosphere's scale height, and the planet's radius.",
+    "version": "0.1.0"
+  },
+
+  "world": {
+    "meters_per_block": {
+      "value": 1.0,
+      "units": "m/block",
+      "source_note": "Campaign datum RA3. Configurable, but every shipped constant assumes 1.0."
+    },
+    "sea_level_y": {
+      "value": 63.0,
+      "units": "block",
+      "source_note": "Minecraft sea level. Altitude datum for all atmospheric math (RA3)."
+    },
+    "build_limit_y": {
+      "value": 320.0,
+      "units": "block",
+      "source_note": "Minecraft 26.2 build ceiling. Usable altitude band is 257 m above the datum."
+    },
+    "tick_seconds": {
+      "value": 0.05,
+      "units": "s",
+      "source_note": "20 Hz server tick. Fixed integrator dt (RA1); never derived from wall clock."
+    },
+    "day_seconds": {
+      "value": 1200.0,
+      "units": "s",
+      "source_note": "One Minecraft day = 24000 ticks = 20 min. Rotation period of the planet, used by the rotating-frame ground track (RE5b)."
+    }
+  },
+
+  "gravity": {
+    "g0": {
+      "value": 9.80665,
+      "units": "m/s^2",
+      "source_note": "Standard gravity, CGPM 1901 datum (RA2). Exact by definition; not scaled. Also the Isp->exhaust-velocity conversion constant (RD2)."
+    },
+    "dimension_scalars": {
+      "overworld": {
+        "value": 1.0,
+        "units": "dimensionless",
+        "source_note": "Earth datum."
+      },
+      "moon": {
+        "value": 0.16519,
+        "units": "dimensionless",
+        "real_value": 1.62,
+        "scale_factor": 9.80665,
+        "source_note": "Lunar surface gravity 1.62 m/s^2 / 9.80665 = 0.1654, i.e. the familiar 1/6 relationship (1/6 = 0.1667). The scalar is the ratio the sim uses; the real value is the measured lunar acceleration in m/s^2, so the factor between them is g0 itself. Not a game scaling - the Moon really is this much weaker."
+      }
+    }
+  },
+
+  "atmosphere": {
+    "rho_sea_level": {
+      "value": 1.225,
+      "units": "kg/m^3",
+      "source_note": "US Standard Atmosphere 1976 sea-level density at 15 C (RB1). Real value, unscaled."
+    },
+    "scale_height": {
+      "value": 55.0,
+      "units": "m",
+      "real_value": 8500.0,
+      "scale_factor": 154.5454545454545,
+      "source_note": "COMPRESSION 1 of 2. Real atmospheric scale height is 8500 m; Minecraft's usable band is only 257 m. Compressing H by 154.55x makes the exponential profile fit inside build limits, so altitude is a real tactical variable rather than decoration. Equivalent reading: game altitude x 154.55 = the real altitude with the same air density. rho(250 m) = 0.0130 kg/m^3, which is genuinely the real density near 38.6 km."
+    },
+    "karman_altitude_game": {
+      "value": 250.0,
+      "units": "m above sea level",
+      "real_value": 38636.36,
+      "scale_factor": 154.5454545454545,
+      "source_note": "Virtual Karman line: the drag-negligible boundary and the orbital-insertion handoff altitude. Sits at y=313, just inside the build ceiling, so it is physically reachable. Its real-altitude equivalent is 38.6 km rather than the real Karman line's 100 km - the honest consequence of COMPRESSION 1, recorded rather than hidden."
+    },
+    "rho_floor": {
+      "value": 1.0e-9,
+      "units": "kg/m^3",
+      "source_note": "Numerical floor. Below this the atmosphere is treated as vacuum, so drag and lift are exactly zero rather than denormal (RA4/I1)."
+    },
+    "speed_of_sound_sea_level": {
+      "value": 340.29,
+      "units": "m/s",
+      "source_note": "US Standard Atmosphere 1976 at 15 C (RB5). Real value, unscaled."
+    },
+    "speed_of_sound_min": {
+      "value": 295.0,
+      "units": "m/s",
+      "source_note": "Speed of sound at the top of the modelled column (~-56 C, real stratosphere). a falls with temperature, not density; interpolated linearly against normalised altitude."
+    }
+  },
+
+  "aerodynamics": {
+    "reference_drag_coefficients": {
+      "sphere": {
+        "value": 0.47,
+        "units": "dimensionless",
+        "source_note": "Classic subcritical sphere C_d (RB2)."
+      },
+      "streamlined_shell": {
+        "value": 0.06,
+        "units": "dimensionless",
+        "source_note": "Boat-tailed artillery shell, low end of the 0.04-0.1 band (RB2)."
+      },
+      "blunt_reentry_body": {
+        "value": 1.35,
+        "units": "dimensionless",
+        "source_note": "Apollo-class blunt capsule, mid 1.0-1.5 band (RB2). High C_d is the point: it decelerates high where the air is thin (RE7)."
+      },
+      "flat_plate": {
+        "value": 1.28,
+        "units": "dimensionless",
+        "source_note": "Normal flat plate (RB2). Post-stall wing behaviour asymptote."
+      },
+      "parachute_canopy": {
+        "value": 1.65,
+        "units": "dimensionless",
+        "source_note": "Hemispherical canopy, mid 1.5-1.75 band (RB2)."
+      }
+    },
+    "thin_airfoil_lift_slope_per_rad": {
+      "value": 6.283185307179586,
+      "units": "1/rad",
+      "source_note": "2*pi per radian, thin-airfoil theory (RB4). Equals 0.1097 per degree; finite wings fall short of this, which the per-profile lift slope expresses."
+    },
+    "default_lift_slope_per_deg": {
+      "value": 0.1,
+      "units": "1/deg",
+      "source_note": "Linear-regime lift-curve slope (RB4). The practical finite-wing value the campaign specifies; 0.1/deg = 5.73/rad, i.e. 91% of thin-airfoil theory."
+    },
+    "default_stall_aoa_deg": {
+      "value": 15.0,
+      "units": "deg",
+      "source_note": "Angle of attack at C_L,max for a conventional section (RB4)."
+    },
+    "post_stall_aoa_deg": {
+      "value": 20.0,
+      "units": "deg",
+      "source_note": "AoA by which lift has collapsed to the post-stall plateau. Between stall and this angle C_L falls sharply (RB4)."
+    },
+    "post_stall_cl_fraction": {
+      "value": 0.45,
+      "units": "dimensionless",
+      "source_note": "Fraction of C_L,max retained on the separated plateau. Bounded, so lift can never run away (I5)."
+    },
+    "post_stall_cd_multiplier": {
+      "value": 4.0,
+      "units": "dimensionless",
+      "source_note": "Profile-drag multiplier once fully separated - a stalled wing is close to a flat plate (RB4)."
+    },
+    "oswald_efficiency_default": {
+      "value": 0.8,
+      "units": "dimensionless",
+      "source_note": "Oswald span efficiency, mid 0.7-0.85 band (RB4b)."
+    },
+    "transonic": {
+      "drag_divergence_mach": {
+        "value": 0.8,
+        "units": "Mach",
+        "source_note": "Mach at which wave drag starts to appear (RB5)."
+      },
+      "peak_mach": {
+        "value": 1.05,
+        "units": "Mach",
+        "source_note": "Mach of maximum transonic drag rise (RB5)."
+      },
+      "peak_multiplier": {
+        "value": 1.6,
+        "units": "dimensionless",
+        "source_note": "C_d multiplier at the peak. Inspired by the Prandtl-Glauert singularity's shape; this is a bounded empirical curve, NOT a Prandtl-Glauert implementation (RB5)."
+      },
+      "supersonic_asymptote_multiplier": {
+        "value": 1.15,
+        "units": "dimensionless",
+        "source_note": "Multiplier the curve eases to well above Mach 1 - supersonic drag stays above subsonic but the barrier is behind you (RB5)."
+      },
+      "supersonic_ease_mach": {
+        "value": 3.0,
+        "units": "Mach",
+        "source_note": "Mach by which the curve has settled onto its asymptote (RB5)."
+      },
+      "incompressible_mach_limit": {
+        "value": 0.3,
+        "units": "Mach",
+        "source_note": "Below this, coefficients are treated as constant (RB5)."
+      }
+    }
+  },
+
+  "propulsion": {
+    "_isp_note": "Profiles declare REAL specific impulse - 311 s for kerolox, 450 s for hydrolox - because those are the numbers an engine is recognised by and the values RD2 asks to be stored. The simulation divides the resulting exhaust velocity by exhaust_velocity_scale before using it. Both numbers are therefore always visible: the real Isp in the profile, the scale here, and the product in the I11 audit.",
+    "exhaust_velocity_scale": {
+      "value": 4.215,
+      "units": "dimensionless",
+      "source_note": "This constant IS a scale factor, so it carries no real_value/scale_factor pair of its own - the audit would be asking what the real-world value of a game scaling is. Its effect is audited instead on the concrete quantity below, kerolox_vacuum_exhaust_velocity_effective. Divides real exhaust velocity to give the effective value the sim uses. Chosen so that reaching orbit is as HARD as it really is, which is the point of RD3. Without it the compact planet would make orbit trivially cheap: a 2230 m/s budget against a real 3050 m/s kerolox exhaust velocity needs a mass ratio of only 2.1, and any single motor would do. With it the effective exhaust velocity is 723.6 m/s, the required mass ratio is 21.8 - the same figure real LEO demands - and a credible multi-stage design becomes necessary rather than optional. Note this is the one constant that scales a REAL measurement for gameplay reasons rather than for geometry."
+    },
+    "isp_reference": {
+      "solid_booster": {
+        "value": 265.0,
+        "units": "s",
+        "source_note": "Solid rocket booster, 250-300 s band (RD2)."
+      },
+      "kerolox_sea_level": {
+        "value": 283.0,
+        "units": "s",
+        "source_note": "Kerosene/LOX at sea level, e.g. Merlin 1D class (RD2b)."
+      },
+      "kerolox_vacuum": {
+        "value": 311.0,
+        "units": "s",
+        "source_note": "Kerosene/LOX in vacuum - the campaign's default first stage (RD2/RD2b). The 283/311 pair is what makes vacuum-optimised upper stages a real decision."
+      },
+      "methalox_vacuum": {
+        "value": 360.0,
+        "units": "s",
+        "source_note": "Methane/LOX, 340-380 s band (RD2)."
+      },
+      "hydrolox_vacuum": {
+        "value": 450.0,
+        "units": "s",
+        "source_note": "Hydrogen/LOX, 430-460 s band (RD2)."
+      },
+      "cold_gas": {
+        "value": 50.0,
+        "units": "s",
+        "source_note": "Cold gas thruster - attitude control only (RD2)."
+      },
+      "ion": {
+        "value": 3000.0,
+        "units": "s",
+        "source_note": "Ion drive, 1500-10000 s band (RD2). Thrust is milli-newton class; the profile loader flags any ion engine used for launch (RD2)."
+      }
+    },
+    "kerolox_vacuum_exhaust_velocity_effective": {
+      "value": 723.58,
+      "units": "m/s",
+      "real_value": 3049.87,
+      "scale_factor": 4.215,
+      "source_note": "The exhaust-velocity scaling made concrete on the campaign's default first-stage propellant. Real kerolox vacuum Isp of 311 s gives v_e = 311 x 9.80665 = 3049.87 m/s; dividing by the 4.215 scale gives the 723.58 m/s the sim actually integrates. Listed so the one gameplay-motivated scaling appears in the I11 audit as a measurable quantity rather than as a bare dimensionless factor. Reference only - the sim derives this from the profile's declared Isp, never from this entry."
+    },
+    "ion_launch_thrust_flag_newtons": {
+      "value": 1000.0,
+      "units": "N",
+      "source_note": "An engine with Isp above the ion threshold and thrust below this cannot be a launch engine; the loader emits a human-readable warning (RD2)."
+    },
+    "ion_isp_threshold": {
+      "value": 1000.0,
+      "units": "s",
+      "source_note": "Isp above which an engine is classed as electric propulsion (RD2)."
+    },
+    "min_liftoff_twr": {
+      "value": 1.0,
+      "units": "dimensionless",
+      "source_note": "Thrust-to-weight below 1 means the vehicle cannot leave the pad - a test-asserted failure, not a slow ascent (RD5). Evaluated with SEA-LEVEL thrust."
+    },
+    "typical_liftoff_twr": {
+      "value": 1.2,
+      "units": "dimensionless",
+      "source_note": "Healthy first-stage T/W; below this gravity losses grow sharply (RD5)."
+    }
+  },
+
+  "orbit": {
+    "_frame_note": "There is ONE frame. A block is a metre in orbit exactly as it is on the ground, gravity is the same 9.80665 m/s^2 in both, and no conversion happens at the Karman line. Orbital altitudes are simply far above the build limit, which is why satellites live in a registry instead of as entities. The atmosphere's compressed scale height changes only how density varies with altitude - it does not compress the length axis, so nothing else has to be rescaled.",
+    "planet_radius": {
+      "value": 342500.0,
+      "units": "m",
+      "real_value": 6371000.0,
+      "scale_factor": 18.601459854014597,
+      "source_note": "COMPRESSION 2 of 2, and the only fiction in the orbital model. Earth's surface gravity on a 342.5 km body - Earth is 6371 km, so 18.6x smaller, which makes this world implausibly dense. It is the free parameter: fixing g at Earth's value and demanding a 20-minute orbit determines the radius, and this is what came out. A smaller planet is genuinely easier to orbit, and the delta-v budget below reflects that honestly rather than papering over it."
+    },
+    "mu": {
+      "value": 1150381340000.0,
+      "units": "m^3/s^2",
+      "real_value": 398600441800000.0,
+      "scale_factor": 346.4917,
+      "source_note": "Standard gravitational parameter, DERIVED not chosen: mu = g0 * R^2 = 9.80665 * 342500^2. Earth's real mu is 3.986e14. Deriving it rather than picking it means surface gravity and orbital mechanics can never drift apart - the usual way a space mod ends up with orbits that contradict the gravity players feel underfoot (RE1)."
+    },
+    "reference_orbit_altitude": {
+      "value": 5000.0,
+      "units": "m above sea level",
+      "real_value": 400000.0,
+      "scale_factor": 80.0,
+      "source_note": "The design orbit. Twenty times higher than the Karman line, so it is comfortably clear of the atmosphere and of the decay floor. Real analogue: the 400 km LEO shell."
+    },
+    "reference_orbit_period_target": {
+      "value": 1200.0,
+      "units": "s",
+      "real_value": 5556.0,
+      "scale_factor": 4.63,
+      "source_note": "Design target for RE1: one Minecraft day. Real LEO period is ~92.6 min. The achieved period at the reference altitude is 1200.02 s, within 0.002% of target - and because it equals the day, the reference orbit passes over the same ground at the same time every day, which is what makes a recon satellite schedulable (RE5b)."
+    },
+    "reference_orbit_velocity": {
+      "value": 1819.5,
+      "units": "m/s",
+      "real_value": 7670.0,
+      "scale_factor": 4.2154,
+      "source_note": "Circular velocity at the reference altitude, sqrt(mu/r). Derived, listed here because the delta-v budget and the exhaust-velocity scale are both keyed to it."
+    },
+    "delta_v_to_orbit": {
+      "value": 2230.0,
+      "units": "m/s",
+      "real_value": 9400.0,
+      "scale_factor": 4.2152,
+      "source_note": "Budget including gravity and drag losses (RD3). Scaled from the real 9400 m/s LEO budget by holding the losses ratio constant: reality pays 9400/7670 = 1.2256 x orbital velocity, so 1.2256 x 1819.5 = 2230 m/s. That leaves ~410 m/s of losses, the same 18% overhead reality pays."
+    },
+    "minimum_sustainable_altitude": {
+      "value": 3000.0,
+      "units": "m",
+      "source_note": "Below this, residual drag decays the orbit (RE4). Real analogue: sub-250 km LEO decays in days. An underpowered launch inserts here and comes down on its own - honest, but temporary, and never a parked orbit."
+    },
+    "decay_rate_at_floor": {
+      "value": 40.0,
+      "units": "m of semi-major axis per orbit",
+      "source_note": "Decay at the floor, growing exponentially with depth below it. Tuned so a marginal insertion survives tens of orbits - long enough for a player to notice the altitude falling and do something about it, short enough that it matters (RE4)."
+    },
+    "decay_depth_scale": {
+      "value": 400.0,
+      "units": "m",
+      "source_note": "e-folding depth of the decay rate below the sustainable floor: every 400 m deeper multiplies the per-orbit loss by e. Reproduces the real cliff, where a few tens of kilometres of altitude separate an orbit lasting years from one lasting days."
+    },
+    "deorbit_altitude": {
+      "value": 250.0,
+      "units": "m above sea level",
+      "source_note": "Where a decaying or commanded-deorbit object leaves the registry and becomes an in-world DESCENT body. Equals the Karman line - one boundary, crossed in both directions."
+    },
+    "insertion_reference_footprint_half_angle": {
+      "value": 30.0,
+      "units": "deg",
+      "source_note": "Default sensor half-angle for footprint geometry. At the reference altitude this projects a 2887 m ground radius, which the ground track crosses in about 3.2 s at 1819.5 m/s - a real observation window, not an instant."
+    }
+  },
+
+  "reentry": {
+    "sutton_graves_k": {
+      "value": 0.00017415,
+      "units": "SI, yielding W/m^2",
+      "source_note": "Sutton-Graves constant for air. Used in the simplified stagnation-point form q_dot = k * sqrt(rho/R_n) * v^3 (RE7). Heating is reported as a state field only; kinetics never applies damage (I10)."
+    },
+    "default_nose_radius": {
+      "value": 0.5,
+      "units": "m",
+      "source_note": "Effective nose radius when a profile omits one. Larger radius = blunter = lower peak heating, the blunt-body insight (RE7)."
+    },
+    "reentry_phase_heating_fraction": {
+      "value": 0.2,
+      "units": "fraction of the profile overheat threshold",
+      "source_note": "Heating rate, as a fraction of the profile's overheat threshold, at which a DESCENT body is reclassified as REENTRY - and below which it eases back to DESCENT. A phase boundary rather than a physical measurement; it exists so consumers know when to draw plasma."
+    },
+    "overheat_threshold_default": {
+      "value": 500000.0,
+      "units": "W/m^2",
+      "source_note": "Default q_dot at which a reentry-overheat EVENT fires. Consumers decide consequences (I10)."
+    }
+  },
+
+  "guidance": {
+    "pn_gain_default": {
+      "value": 4.0,
+      "units": "dimensionless",
+      "source_note": "Proportional navigation constant N, mid the standard 3-5 band (RC1)."
+    },
+    "pn_gain_min": {
+      "value": 2.0,
+      "units": "dimensionless",
+      "source_note": "Hard clamp floor for N (RC1)."
+    },
+    "pn_gain_max": {
+      "value": 6.0,
+      "units": "dimensionless",
+      "source_note": "Hard clamp ceiling for N (RC1)."
+    },
+    "apn_target_accel_gain": {
+      "value": 0.5,
+      "units": "dimensionless",
+      "source_note": "The N/2 coefficient on target acceleration in augmented PN (RC2). Gated behind seeker quality."
+    },
+    "boresight_align_limit_deg": {
+      "value": 45.0,
+      "units": "deg",
+      "source_note": "Off-boresight angle beyond which PN geometry is outside its small-angle derivation; the alignment BOOST pre-phase runs until inside this cone (RC3)."
+    },
+    "loft_blend_seconds": {
+      "value": 2.0,
+      "units": "s",
+      "source_note": "Duration of the smooth cosine blend from lofted ascent into pure PN (RC4). A hard switch produces the visible snap that reads fake."
+    },
+    "closing_velocity_epsilon": {
+      "value": 0.01,
+      "units": "m/s",
+      "source_note": "Below this closing speed the PN law is undefined (division by V_c); guidance holds its last command instead of producing Inf (I1)."
+    },
+    "proximity_fuse_radius_default": {
+      "value": 4.0,
+      "units": "m",
+      "source_note": "Miss distance within which the proximity fuse reports a hit. Real fuses trade radius against warhead size; here it is the radius at which kinetics emits a Proximity event and stops - what that event means is the consumer's call (I10)."
+    },
+    "terminal_phase_range_fraction": {
+      "value": 0.25,
+      "units": "fraction of seeker max range",
+      "source_note": "Range, as a fraction of the seeker's maximum, at which a guided body hands over from MIDCOURSE to TERMINAL. A phase boundary rather than a physical measurement; it marks where the endgame begins and the fuse arms."
+    },
+    "memory_track_seconds_default": {
+      "value": 4.0,
+      "units": "s",
+      "source_note": "How long a seeker coasts toward the last predicted intercept after losing lock before going inertial (RC6)."
+    }
+  },
+
+  "sensors": {
+    "radar_reference_range": {
+      "value": 250.0,
+      "units": "m",
+      "source_note": "Detection range against the reference RCS (RF1). Sized to Minecraft engagement distances."
+    },
+    "radar_reference_rcs": {
+      "value": 1.0,
+      "units": "m^2",
+      "source_note": "Reference cross-section for the fourth-root range law (RF1)."
+    },
+    "rcs_bins": {
+      "stealth": {
+        "value": 0.05,
+        "units": "m^2",
+        "source_note": "Stealthy airframe, <0.1 m^2 band (RF1)."
+      },
+      "cruise_missile": {
+        "value": 0.2,
+        "units": "m^2",
+        "source_note": "Cruise missile, 0.01-1 m^2 band (RF1)."
+      },
+      "fighter": {
+        "value": 5.0,
+        "units": "m^2",
+        "source_note": "Fighter aircraft, 1-15 m^2 band (RF1)."
+      }
+    },
+    "range_noise_coefficient": {
+      "value": 0.02,
+      "units": "fraction of range",
+      "source_note": "1-sigma position error as a fraction of range, before pulse integration (RF3). Deterministic given the seed."
+    },
+    "pulse_integration_max_improvement": {
+      "value": 0.4,
+      "units": "dimensionless",
+      "source_note": "Best achievable noise multiplier from a long dwell - error falls as 1/sqrt(pulses), floored here (RF3)."
+    },
+    "horizon_sample_step": {
+      "value": 0.5,
+      "units": "m",
+      "source_note": "Block-sampling step for radar-horizon line of sight (RF2). Half a block, so no single block is stepped over."
+    }
+  },
+
+  "limits": {
+    "g_limit_default": {
+      "value": 30.0,
+      "units": "g",
+      "source_note": "Default profile acceleration clamp, mid the 25-40 g band (I2)."
+    },
+    "g_limit_hard_cap": {
+      "value": 60.0,
+      "units": "g",
+      "source_note": "Absolute ceiling. A seeker demanding 200 g gets 60 (I2). Applied after every other clamp."
+    },
+    "q_max_default": {
+      "value": 60000.0,
+      "units": "Pa",
+      "source_note": "Default airframe dynamic-pressure limit (RB6). Real launch vehicles see max-Q near 30-35 kPa; sized above that so a well-flown ascent survives and a badly flown one does not."
+    },
+    "chute_q_deploy_default": {
+      "value": 12000.0,
+      "units": "Pa",
+      "source_note": "Canopy deploy limit (RB6). Opening above this shreds the chute instead of working by magic - which is what makes drogue-then-main staging a real design choice."
+    },
+    "max_substeps": {
+      "value": 64,
+      "units": "count",
+      "source_note": "Upper bound on physics substeps per tick (RA1). Ordinary bodies never approach it - the shipped profiles run at 4 to 12 - and it exists for the pathological end of the envelope, where a very light body with a very large drag area sees accelerations of hundreds of g at walking pace."
+    },
+    "max_substep_velocity_fraction": {
+      "value": 0.2,
+      "units": "fraction of current speed",
+      "source_note": "Second substep bound, and the one that catches what the displacement bound cannot: acceleration times substep may not exceed this fraction of the body's own speed. A slow body under enormous acceleration covers almost no distance per substep, so the displacement rule is satisfied while the velocity rotates through most of a right angle in one step - and no first-order integrator is honest at that resolution. Dimensionless accuracy ratio, not a physical measurement."
+    },
+    "min_substep_reference_speed": {
+      "value": 1.0,
+      "units": "m/s",
+      "source_note": "Floor on the speed used by the velocity-fraction rule, so a body at rest does not demand infinite substeps to start moving."
+    },
+    "default_substeps": {
+      "value": 4,
+      "units": "count",
+      "source_note": "Default substeps per tick (RA1). dt_sub = 0.0125 s."
+    },
+    "max_substep_displacement": {
+      "value": 2.75,
+      "units": "m",
+      "source_note": "Target displacement per substep; the substep planner raises the count until it is met, or until the cap binds. Set to 5% of the atmospheric scale height, because the accuracy limit that actually matters is how stale the air density becomes within a substep - NOT collision safety, which swept voxel traversal already guarantees exactly at any step size (I1)."
+    },
+    "max_substep_scale_height_fraction": {
+      "value": 0.3,
+      "units": "fraction of scale height",
+      "source_note": "Hard I1 bound: within the atmosphere, per-substep displacement may not exceed this fraction of the scale height, or the density driving drag is too stale to trust. At the 16-substep cap this is satisfied up to the max_speed ceiling. Dimensionless accuracy ratio, not a physical measurement."
+    },
+    "max_speed": {
+      "value": 4000.0,
+      "units": "m/s",
+      "source_note": "Absolute speed ceiling for in-world bodies. Above orbital velocity; exceeding it is an invariant breach, not a clamp (I1)."
+    },
+    "ascent_aoa_limit_deg": {
+      "value": 8.0,
+      "units": "deg",
+      "source_note": "Maximum angle of attack permitted at max-Q during a gravity turn (RD6). Real launch vehicles fly within about a degree of zero AoA through max-Q because the side load scales with q*alpha; 8 degrees is a generous ceiling that still makes an over-aggressive pitch program a structural event rather than a free shortcut."
+    },
+    "max_slew_rate_default": {
+      "value": 30.0,
+      "units": "deg/s",
+      "source_note": "Default commanded attitude slew rate (RE6/I12)."
+    },
+    "quaternion_norm_tolerance": {
+      "value": 1.0e-6,
+      "units": "dimensionless",
+      "source_note": "Permitted deviation of the orientation quaternion from unit norm after any step (I12)."
+    },
+    "energy_gain_tolerance_per_tick": {
+      "value": 0.001,
+      "units": "fraction",
+      "source_note": "Maximum permitted mechanical-energy INCREASE per tick for an unpowered body (I3). Semi-implicit Euler loses energy by construction, so any gain above integration noise is free energy and a hard failure."
+    },
+    "terminal_velocity_tolerance": {
+      "value": 0.02,
+      "units": "fraction",
+      "source_note": "Closed-form cross-check tolerance for v_t (RB3/I5)."
+    },
+    "tsiolkovsky_tolerance": {
+      "value": 0.01,
+      "units": "fraction",
+      "source_note": "Closed-form cross-check tolerance for achieved delta-v (RD1/I4)."
+    },
+    "orbital_period_tolerance": {
+      "value": 0.005,
+      "units": "fraction",
+      "source_note": "Closed-form cross-check tolerance for orbital period (RE1)."
+    },
+    "ballistic_range_tolerance": {
+      "value": 0.02,
+      "units": "fraction",
+      "source_note": "Closed-form cross-check tolerance for the drag-aware range solver."
+    }
+  },
+
+  "wind": {
+    "enabled_default": {
+      "value": 0.0,
+      "units": "boolean (0/1)",
+      "source_note": "Wind is OFF by default (RB7). Opt-in per dimension."
+    },
+    "base_speed": {
+      "value": 4.0,
+      "units": "m/s",
+      "source_note": "Wind speed at the reference altitude band (RB7). Deterministic field, never per-tick noise."
+    },
+    "shear_exponent": {
+      "value": 0.34,
+      "units": "dimensionless",
+      "source_note": "Power-law wind shear exponent; the 1/7 law is the open-terrain value, 0.34 is the rougher-terrain end. Wind strengthens with altitude."
+    },
+    "band_height": {
+      "value": 40.0,
+      "units": "m",
+      "source_note": "Vertical wavelength of the altitude-banded wind field (RB7)."
+    },
+    "spatial_wavelength": {
+      "value": 512.0,
+      "units": "m",
+      "source_note": "Horizontal wavelength of the low-frequency wind field (RB7). Long, so wind is a regional condition and not turbulence."
+    },
+    "time_period": {
+      "value": 24000.0,
+      "units": "s",
+      "source_note": "Period over which the wind field rotates. Derived from world time, so it is reproducible from (seed, position, time) alone (RB7/I7)."
+    }
+  },
+
+  "dispersion": {
+    "default_cep": {
+      "value": 3.0,
+      "units": "m",
+      "source_note": "Circular error probable for unguided fire. Seeded, so a given (seed, shot index) always lands identically (I7)."
+    },
+    "cep_to_sigma": {
+      "value": 0.8493218,
+      "units": "dimensionless",
+      "source_note": "CEP = 1.1774 * sigma for a circular normal distribution, so sigma = CEP * 0.84932. Converts the stated CEP into the sampling parameter."
+    }
+  }
+}

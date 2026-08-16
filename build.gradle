@@ -1,0 +1,29 @@
+// Root build. The two modules are deliberately very different:
+//
+//   core   — pure Java 25, ZERO dependencies, no Minecraft. All of the physics and the whole
+//            test battery live here, which is why the battery runs headless in ~24 seconds and
+//            why warfront, naval and aircraft can consume kinetics without inheriting a
+//            Minecraft-version constraint.
+//   fabric — the thin adapter that gives core a Minecraft world to ask about, and ships the mod.
+//
+// Keeping the boundary at one interface (WorldProbe) is what makes invariant I10 enforceable:
+// there is no handle through which the physics could apply damage even by accident.
+plugins {
+	id 'java'
+}
+
+subprojects {
+	apply plugin: 'java'
+
+	java {
+		sourceCompatibility = JavaVersion.VERSION_25
+		targetCompatibility = JavaVersion.VERSION_25
+	}
+
+	tasks.withType(JavaCompile).configureEach {
+		it.options.release = 25
+		it.options.encoding = 'UTF-8'
+		// -serial is off because the exception types here are never serialised.
+		it.options.compilerArgs += ['-Xlint:all,-serial']
+	}
+}

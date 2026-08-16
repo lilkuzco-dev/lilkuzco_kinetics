@@ -1,0 +1,354 @@
+{
+  "_doc": {
+    "purpose": "Reference profiles shipped with lilkuzco_kinetics v0.1.0. Consumers may load these directly or use them as worked examples.",
+    "units": "SI throughout. Mass kg, thrust N, area m^2, Isp s (REAL values - the sim applies propulsion.exhaust_velocity_scale), pressure Pa, altitude m above the sea-level datum.",
+    "note": "Specific impulse is declared as its real-world figure so engines stay recognisable. See SCALE-AUDIT.md for what the sim does with it."
+  },
+
+  "profiles": [
+    {
+      "id": "kinetics:mortar_shell",
+      "_note": "Unguided ballistic reference. Streamlined, no lifting surface, no seeker - the simplest thing the library can fly, and the case the ballistic solver is checked against.",
+      "payload_dry_mass": 10.0,
+      "cep": 3.0,
+      "airframe": {
+        "reference_area": 0.02,
+        "cd0": 0.30,
+        "g_limit": 25.0,
+        "q_max": 120000.0,
+        "nose_radius": 0.08,
+        "rcs": 0.02
+      }
+    },
+
+    {
+      "id": "kinetics:drop_body",
+      "_note": "Light, draggy, deliberately low ballistic coefficient. Exists for the RB3 golden test: dropped from the Karman line it ACCELERATES in thin air, then DECELERATES as the air thickens - the counterintuitive result that only falls out if the atmosphere model is right.",
+      "payload_dry_mass": 50.0,
+      "airframe": {
+        "reference_area": 2.0,
+        "cd0": 1.0,
+        "g_limit": 25.0,
+        "q_max": 60000.0,
+        "nose_radius": 0.5,
+        "rcs": 0.5
+      }
+    },
+
+    {
+      "id": "kinetics:interceptor",
+      "_note": "Short-range PN interceptor. Hard 1.2 s boost then a guided coast, which is what real point-defence missiles do - all the energy up front, spend it manoeuvring. Fins give it turn authority after burnout; at 400 m/s it can pull 37 g and at 100 m/s only 2.3 g, which is invariant I6 doing its job.",
+      "payload_dry_mass": 30.0,
+      "max_slew_rate_deg": 220.0,
+      "stages": [
+        {
+          "engine": "solid_booster",
+          "fuel_mass": 40.0,
+          "stage_dry_mass": 10.0,
+          "thrust_vacuum": 20000.0,
+          "isp_sea_level": 240.0,
+          "isp_vacuum": 265.0
+        }
+      ],
+      "airframe": {
+        "reference_area": 0.03,
+        "wing_area": 0.20,
+        "cd0": 0.15,
+        "aspect_ratio": 2.0,
+        "oswald_efficiency": 0.75,
+        "lift_slope_per_deg": 0.1,
+        "g_limit": 40.0,
+        "q_max": 150000.0,
+        "nose_radius": 0.05,
+        "rcs": 0.05
+      },
+      "seeker": {
+        "quality": "ADVANCED",
+        "field_of_view_deg": 45.0,
+        "pn_gain": 4.0,
+        "memory_track_seconds": 4.0,
+        "min_range": 15.0,
+        "max_range": 400.0,
+        "altitude_floor": -32.0,
+        "altitude_ceiling": 400.0,
+        "max_crossing_rate_deg": 120.0,
+        "max_flight_time": 20.0,
+        "flare_resistance": 0.8,
+        "chaff_resistance": 0.75
+      }
+    },
+
+    {
+      "id": "kinetics:cheap_missile",
+      "_note": "The same airframe with a budget head: plain PN only (CHEAP gates out augmented PN per RC2), a narrow 20-degree gimbal, and poor counter-countermeasures. Included so the difference a good seeker makes is visible rather than asserted.",
+      "payload_dry_mass": 30.0,
+      "max_slew_rate_deg": 180.0,
+      "stages": [
+        {
+          "engine": "solid_booster",
+          "fuel_mass": 40.0,
+          "stage_dry_mass": 10.0,
+          "thrust_vacuum": 20000.0,
+          "isp_sea_level": 240.0,
+          "isp_vacuum": 265.0
+        }
+      ],
+      "airframe": {
+        "reference_area": 0.03,
+        "wing_area": 0.20,
+        "cd0": 0.15,
+        "aspect_ratio": 2.0,
+        "lift_slope_per_deg": 0.1,
+        "g_limit": 30.0,
+        "q_max": 150000.0,
+        "nose_radius": 0.05,
+        "rcs": 0.08
+      },
+      "seeker": {
+        "quality": "CHEAP",
+        "field_of_view_deg": 20.0,
+        "pn_gain": 3.0,
+        "memory_track_seconds": 2.0,
+        "min_range": 15.0,
+        "max_range": 300.0,
+        "max_crossing_rate_deg": 60.0,
+        "max_flight_time": 15.0,
+        "flare_resistance": 0.25,
+        "chaff_resistance": 0.2
+      }
+    },
+
+    {
+      "id": "kinetics:lofted_missile",
+      "_note": "Long-range, lofted. A bigger motor and a 1200 m seeker mean it burns out with the target still far away, so it genuinely flies the whole state machine: BOOST under the loft bias, a long unpowered MIDCOURSE on PN, then TERMINAL. The short-range interceptor above never sees MIDCOURSE because it arrives before burnout.",
+      "payload_dry_mass": 60.0,
+      "max_slew_rate_deg": 160.0,
+      "stages": [
+        {
+          "engine": "solid_sustainer",
+          "fuel_mass": 40.0,
+          "stage_dry_mass": 25.0,
+          "thrust_vacuum": 14000.0,
+          "isp_sea_level": 245.0,
+          "isp_vacuum": 270.0
+        }
+      ],
+      "airframe": {
+        "reference_area": 0.05,
+        "wing_area": 0.35,
+        "cd0": 0.12,
+        "aspect_ratio": 2.5,
+        "oswald_efficiency": 0.75,
+        "lift_slope_per_deg": 0.1,
+        "g_limit": 25.0,
+        "q_max": 150000.0,
+        "nose_radius": 0.06,
+        "rcs": 0.15
+      },
+      "seeker": {
+        "quality": "ADVANCED",
+        "field_of_view_deg": 55.0,
+        "pn_gain": 4.0,
+        "memory_track_seconds": 6.0,
+        "min_range": 20.0,
+        "max_range": 1200.0,
+        "max_crossing_rate_deg": 120.0,
+        "max_flight_time": 45.0,
+        "flare_resistance": 0.85,
+        "chaff_resistance": 0.8
+      }
+    },
+
+    {
+      "id": "kinetics:glider",
+      "_note": "Winged, unpowered, high aspect ratio. Exists for the two lift tests: that C_L peaks near 15 degrees and then collapses (RB4), and that a sustained maximum-C_L turn bleeds speed because induced drag has to be paid for (RB4b/I3).",
+      "payload_dry_mass": 500.0,
+      "max_slew_rate_deg": 60.0,
+      "airframe": {
+        "reference_area": 2.0,
+        "wing_area": 15.0,
+        "cd0": 0.020,
+        "aspect_ratio": 8.0,
+        "oswald_efficiency": 0.82,
+        "lift_slope_per_deg": 0.1,
+        "stall_aoa_deg": 15.0,
+        "post_stall_aoa_deg": 20.0,
+        "post_stall_cl_fraction": 0.45,
+        "g_limit": 8.0,
+        "q_max": 40000.0,
+        "nose_radius": 0.4,
+        "rcs": 5.0
+      }
+    },
+
+    {
+      "id": "kinetics:orbital_rocket_2stage",
+      "_note": "The reference launch vehicle: 19,627 kg on the pad to put 100 kg in orbit. Two kerolox stages giving 2400 m/s of ideal delta-v against a 2230 m/s budget - a 7.6% margin, which is not padding. A first stage burning through thick air runs at sea-level Isp for much of its burn and delivers about 13 m/s less than the vacuum equation promises, so a design sized exactly to the budget arrives short. Sea-level T/W is 1.80. Structural fraction is 12% per stage, which is also what caps the design: stage 1 cannot exceed a mass ratio of about 8 no matter how much propellant it carries, which is precisely why the second stage exists.",
+      "payload_dry_mass": 100.0,
+      "max_slew_rate_deg": 12.0,
+      "substeps": 4,
+      "stages": [
+        {
+          "engine": "kerolox_first_stage",
+          "fuel_mass": 16691.0,
+          "stage_dry_mass": 2276.0,
+          "thrust_vacuum": 380752.0,
+          "isp_sea_level": 283.0,
+          "isp_vacuum": 311.0
+        },
+        {
+          "engine": "kerolox_upper_stage",
+          "fuel_mass": 500.0,
+          "stage_dry_mass": 60.0,
+          "thrust_vacuum": 12945.0,
+          "isp_sea_level": 283.0,
+          "isp_vacuum": 311.0
+        }
+      ],
+      "airframe": {
+        "reference_area": 3.5,
+        "cd0": 0.35,
+        "g_limit": 12.0,
+        "q_max": 80000.0,
+        "nose_radius": 0.9,
+        "rcs": 12.0
+      }
+    },
+
+    {
+      "id": "kinetics:orbital_rocket_underpowered",
+      "_note": "Lifts off cleanly at T/W 1.50 and still fails, because delta-v and thrust are different problems. 1361 m/s of ideal delta-v against a 2230 m/s budget: 869 m/s short. It reaches the Karman line and falls back, which is the honest failure RD3 asks for.",
+      "payload_dry_mass": 100.0,
+      "max_slew_rate_deg": 12.0,
+      "stages": [
+        {
+          "engine": "kerolox_single_stage",
+          "fuel_mass": 5000.0,
+          "stage_dry_mass": 800.0,
+          "thrust_vacuum": 95375.0,
+          "isp_sea_level": 283.0,
+          "isp_vacuum": 311.0
+        }
+      ],
+      "airframe": {
+        "reference_area": 3.0,
+        "cd0": 0.35,
+        "g_limit": 12.0,
+        "q_max": 80000.0,
+        "nose_radius": 0.9,
+        "rcs": 10.0
+      }
+    },
+
+    {
+      "id": "kinetics:orbital_rocket_twr_fail",
+      "_note": "The other failure mode, and the one that catches paper designs. Sea-level T/W is 0.95, so it never leaves the pad - but VACUUM T/W is 1.04, so judged on the vacuum thrust figure this vehicle looks flyable. It is not. That 9.9% gap between sea-level and vacuum thrust is exactly why RD5 specifies the sea-level number for the liftoff gate, and this profile exists to sit inside the gap.",
+      "payload_dry_mass": 100.0,
+      "stages": [
+        {
+          "engine": "kerolox_weak",
+          "fuel_mass": 5000.0,
+          "stage_dry_mass": 800.0,
+          "thrust_vacuum": 60401.0,
+          "isp_sea_level": 283.0,
+          "isp_vacuum": 311.0
+        }
+      ],
+      "airframe": {
+        "reference_area": 3.0,
+        "cd0": 0.35,
+        "g_limit": 12.0,
+        "q_max": 80000.0,
+        "nose_radius": 0.9,
+        "rcs": 10.0
+      }
+    },
+
+    {
+      "id": "kinetics:reentry_capsule",
+      "_note": "Blunt body, drogue then main, sized from the entry it actually has to survive. C_d 1.35 over 14 m^2 on 500 kg is a ballistic coefficient of 26 kg/m^2 - a 4.2 m heat shield on a half-tonne capsule, which looks absurd next to a real one until you notice this atmosphere carries 1/155th of Earth's column mass. A capsule with a real-world beta of 400 arrives at the ground still supersonic. The shield has to be this big; the physics says so, and the shield is a visible component because of it. Chutes are staged: the drogue takes 18 kPa, the main only 5 kPa, so the main physically cannot open until the drogue has done its work.",
+      "payload_dry_mass": 500.0,
+      "max_slew_rate_deg": 25.0,
+      "airframe": {
+        "reference_area": 14.0,
+        "cd0": 1.35,
+        "g_limit": 30.0,
+        "q_max": 90000.0,
+        "nose_radius": 1.5,
+        "overheat_threshold": 250000.0,
+        "rcs": 3.0
+      },
+      "recovery": [
+        {
+          "name": "drogue",
+          "cd": 1.40,
+          "area": 10.0,
+          "q_deploy_max": 18000.0,
+          "deploy_altitude": 200.0
+        },
+        {
+          "name": "main",
+          "cd": 1.65,
+          "area": 45.0,
+          "q_deploy_max": 5000.0,
+          "deploy_altitude": 90.0
+        }
+      ]
+    },
+
+    {
+      "id": "kinetics:reentry_slender",
+      "_note": "The control for the blunt-body test (RE7): identical mass, sharply lower drag and a fine nose. It keeps its speed until it is deep in thick air, and because heating goes as v^3 it cooks. Its peak heating rate must come out ABOVE the blunt capsule's despite the smaller nose - that ordering is the whole insight.",
+      "payload_dry_mass": 500.0,
+      "airframe": {
+        "reference_area": 0.5,
+        "cd0": 0.10,
+        "g_limit": 30.0,
+        "q_max": 400000.0,
+        "nose_radius": 0.10,
+        "overheat_threshold": 250000.0,
+        "rcs": 0.5
+      }
+    },
+
+    {
+      "id": "kinetics:chute_only_capsule",
+      "_note": "A single main chute with no drogue, for the over-q shred test. Opening a 5 kPa canopy while still fast destroys it - which is the point of the deploy gate, and why the staged capsule above exists.",
+      "payload_dry_mass": 500.0,
+      "airframe": {
+        "reference_area": 4.0,
+        "cd0": 1.35,
+        "g_limit": 30.0,
+        "q_max": 90000.0,
+        "nose_radius": 1.5,
+        "overheat_threshold": 250000.0,
+        "rcs": 3.0
+      },
+      "recovery": [
+        {
+          "name": "main_only",
+          "cd": 1.65,
+          "area": 40.0,
+          "q_deploy_max": 5000.0,
+          "deploy_altitude": 220.0
+        }
+      ]
+    },
+
+    {
+      "id": "kinetics:satellite_recon",
+      "_note": "A registry payload. It has an airframe only so that a deorbit handoff has something to fly; in orbit its physics is the elements, not this.",
+      "payload_dry_mass": 100.0,
+      "max_slew_rate_deg": 5.0,
+      "airframe": {
+        "reference_area": 1.5,
+        "cd0": 1.2,
+        "g_limit": 5.0,
+        "q_max": 40000.0,
+        "nose_radius": 0.6,
+        "overheat_threshold": 250000.0,
+        "rcs": 8.0
+      }
+    }
+  ]
+}

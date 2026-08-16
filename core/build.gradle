@@ -1,0 +1,49 @@
+// kinetics-core: pure Java, no dependencies, no Minecraft.
+//
+// The dependency list is empty on purpose. A shared physics library that dragged a JSON stack
+// or a test framework behind it would impose that choice on every consumer, and it would
+// weaken invariant I7 - nothing outside this module can change how a trajectory integrates.
+plugins {
+	id 'java-library'
+	id 'maven-publish'
+}
+
+version = rootProject.property('mod_version')
+group = rootProject.property('maven_group')
+
+base { archivesName = 'kinetics-core' }
+
+dependencies { }
+
+sourceSets {
+	test {
+		java.srcDirs = ['src/test/java']
+		resources.srcDirs = ['src/main/resources']
+	}
+}
+
+// The battery is a plain main class, not JUnit — see Harness for why.
+tasks.register('battery', JavaExec) {
+	group = 'verification'
+	description = 'Run the full physics test battery'
+	classpath = sourceSets.test.runtimeClasspath + sourceSets.main.output
+	mainClass = 'dev.lilkuzco.kinetics.test.TestMain'
+}
+
+tasks.register('scaleAudit', JavaExec) {
+	group = 'documentation'
+	description = 'Regenerate SCALE-AUDIT.md (invariant I11)'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'dev.lilkuzco.kinetics.constants.ScaleAudit'
+	args = ["${rootProject.projectDir}/SCALE-AUDIT.md"]
+}
+
+tasks.named('check') { dependsOn 'battery' }
+
+java { withSourcesJar() }
+
+publishing {
+	publications {
+		mavenJava(MavenPublication) { from components.java }
+	}
+}

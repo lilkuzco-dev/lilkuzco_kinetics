@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "kinetics",
+  "version": "${version}",
+  "name": "Lilkuzco Kinetics",
+  "description": "Motion authority for the empire. A server-authoritative physics library: Newtonian integration with swept collision, exponential atmosphere, drag and lift with stall, proportional navigation, Tsiolkovsky staging, and an epoch-propagated orbital registry. Registers no blocks, items or entities - consumers drive it and resolve their own damage.",
+  "authors": ["lilkuzco"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.lilkuzco.kinetics.fabric.KineticsMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

@@ -1,0 +1,34 @@
+// The Fabric adapter. Thin by design: it gives core a world to ask about and nothing else.
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = rootProject.property('mod_version')
+group = rootProject.property('maven_group')
+
+base { archivesName = 'lilkuzco-kinetics' }
+
+loom {
+	mods {
+		"kinetics" { sourceSet sourceSets.main }
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${rootProject.property('minecraft_version')}"
+	implementation "net.fabricmc:fabric-loader:${rootProject.property('loader_version')}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.property('fabric_api_version')}"
+
+	// Bundle core into the mod jar so consumers get one artifact.
+	implementation project(':core')
+	include project(':core')
+}
+
+processResources {
+	inputs.property 'version', project.version
+	filesMatching('fabric.mod.json') { expand version: project.version }
+}
+
+jar {
+	from(rootProject.file('LICENSE')) { rename { "${it}_lilkuzco_kinetics" } }
+}
