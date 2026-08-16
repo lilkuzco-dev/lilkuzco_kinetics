@@ -48,6 +48,7 @@ public final class ClosedFormTests {
         inducedDrag(h, k);
         transonicRise(h, k);
         bluntBodyReentry(h, k);
+        ascentAoaLimit(h, k);
     }
 
     // ---- RB3 --------------------------------------------------------------
@@ -480,6 +481,37 @@ public final class ClosedFormTests {
                 Double.isFinite(c.dragMultiplier(1.0)) && Double.isFinite(c.dragMultiplier(0.999)),
                 String.format("at Mach 1.000: %.6f, at Mach 0.999: %.6f",
                         c.dragMultiplier(1.0), c.dragMultiplier(0.999)));
+        h.endSuite();
+    }
+
+    /**
+     * RD6 - the ascent angle-of-attack limit constrains the PRODUCT q*alpha, so it must relax as
+     * dynamic pressure falls. The regression guard for the liftoff crash cosmos found.
+     */
+    private static void ascentAoaLimit(Harness h, Constants k) {
+        h.suite("RD6 — the q*alpha limit relaxes as dynamic pressure falls");
+        var turn = dev.lilkuzco.kinetics.propulsion.GravityTurn.standard(k);
+        double qMax = k.d("limits.q_max_default");
+        double limit = k.d("limits.ascent_aoa_limit_deg");
+
+        // On the pad: barely moving, essentially no q, and the commanded attitude must be
+        // obeyed rather than clamped to whatever direction the vehicle is drifting.
+        Vec3 drifting = new Vec3(0, -0.5, 0);   // one substep of gravity, before thrust builds
+        Vec3 commanded = turn.desiredDirection(2.0, new Vec3(1, 0, 0), drifting, 0.4, qMax);
+        double pitchDeg = Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, commanded.y()))));
+        h.greater("a vehicle at 0.5 m/s still points where it was told", pitchDeg, 80.0, "deg");
+        h.isTrue("  and is NOT clamped toward its own downward drift",
+                commanded.y() > 0.0,
+                String.format("commanded %s — a clamp here is what flew rockets into the ground",
+                        commanded));
+
+        // At max-Q the limit binds hard, which is the whole point of having it.
+        h.isTrue("at max-Q the limit binds",
+                turn.exceedsAoaLimit(new Vec3(300, 0, 0), new Vec3(0, 1, 0), qMax, qMax),
+                String.format("a 90 deg demand at q_max exceeds the %.0f deg allowance", limit));
+        h.isTrue("well below max-Q it does not",
+                !turn.exceedsAoaLimit(new Vec3(20, 0, 0), new Vec3(0, 1, 0), qMax / 200.0, qMax),
+                "the allowance scales as q_max/q, so thin air permits manoeuvre");
         h.endSuite();
     }
 

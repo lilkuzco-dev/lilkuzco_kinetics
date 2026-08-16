@@ -98,10 +98,18 @@ public final class GravityTurn {
         double speed = velocity.length();
         if (speed < 1e-6 || q <= 0.0) return commanded;
 
-        // Scale the permitted angle of attack down as q rises. At and above max-Q only the
-        // base limit is available; well below it the vehicle may manoeuvre more freely.
-        double allowedAoa = qMax <= 0.0 ? aoaLimitDeg
-                : aoaLimitDeg * Math.min(1.0, qMax / Math.max(q, 1e-9));
+        // The constraint is on the PRODUCT q*alpha, so the permitted angle is
+        // (q_max * alpha_limit) / q - tight at max-Q, and correspondingly loose when there is
+        // barely any air to push against.
+        //
+        // The first version clamped this with min(1, q_max/q), which meant the allowance never
+        // rose above the base limit no matter how little dynamic pressure there was. On the pad
+        // that is fatal: a vehicle at 2 m/s has no meaningful angle of attack at all, but the
+        // clamp still pinned its nose to within 8 degrees of its velocity vector - and its
+        // velocity vector, one substep after ignition, points DOWN, because gravity acted before
+        // thrust built. The rocket then flew its own thrust into the ground. Found by cosmos.
+        double allowedAoa = qMax <= 0.0 ? 180.0
+                : Math.min(180.0, aoaLimitDeg * qMax / Math.max(q, 1e-9));
         Vec3 velocityDir = velocity.scale(1.0 / speed);
         double aoaDeg = Math.toDegrees(velocityDir.angleTo(commanded));
         if (aoaDeg <= allowedAoa) return commanded;
@@ -122,8 +130,8 @@ public final class GravityTurn {
     public boolean exceedsAoaLimit(Vec3 velocity, Vec3 commanded, double q, double qMax) {
         double speed = velocity.length();
         if (speed < 1e-6) return false;
-        double allowed = qMax <= 0.0 ? aoaLimitDeg
-                : aoaLimitDeg * Math.min(1.0, qMax / Math.max(q, 1e-9));
+        double allowed = qMax <= 0.0 ? 180.0
+                : Math.min(180.0, aoaLimitDeg * qMax / Math.max(q, 1e-9));
         return Math.toDegrees(velocity.scale(1.0 / speed).angleTo(commanded)) > allowed;
     }
 

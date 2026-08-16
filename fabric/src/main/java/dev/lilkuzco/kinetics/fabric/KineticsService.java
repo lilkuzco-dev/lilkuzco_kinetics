@@ -118,10 +118,23 @@ public final class KineticsService {
         DimensionContext ctx = dimensions.get(dimension);
         if (ctx == null) return null;
 
-        Quat facing = velocity.lengthSq() > 1e-12
-                ? Quat.between(new Vec3(0, 0, 1), velocity.normalized())
-                : Quat.IDENTITY;
         FlightPhase initial = profile.isPowered() ? FlightPhase.RAIL : FlightPhase.DESCENT;
+
+        // Initial attitude. A body with velocity points along it; a body without one points
+        // UP if it is on a rail and along +Z otherwise.
+        //
+        // The "up" case is not cosmetic. Quat.IDENTITY points +Z - horizontal - so a rocket
+        // spawned at rest on a pad started lying on its side, spent seven seconds slewing
+        // upright at its 12 deg/s rate while thrusting sideways, and flew into the ground. A
+        // vehicle on a launch rail points at the sky; that is what a launch rail is for.
+        Quat facing;
+        if (velocity.lengthSq() > 1e-12) {
+            facing = Quat.between(new Vec3(0, 0, 1), velocity.normalized());
+        } else if (initial == FlightPhase.RAIL) {
+            facing = Quat.between(new Vec3(0, 0, 1), Vec3.UP);
+        } else {
+            facing = Quat.IDENTITY;
+        }
 
         KineticBody body = new KineticBody(id, profile, constants, position, velocity,
                 facing, initial);
