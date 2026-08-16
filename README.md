@@ -99,6 +99,16 @@ simulated time — at 0.69 ms mean MSPT and 0.98 ms at the 99th percentile, agai
 
 ---
 
+## Known work
+
+**GC tuning before a real combat load** (issue #1, not a v0.1.0 blocker). The soak holds 0.74 ms
+mean and 1.39 ms p99 against a 2 ms budget, but one tick in 24,000 hit 34 ms — a collection pause,
+not sustained cost. `Vec3` is a record and every vector operation allocates, so the hot path's
+allocation rate is high. Worth investigating before warfront puts a live engagement through it.
+
+See `PHYSICS-CONSTITUTION.md` for the twelve invariants as ratified, including the three
+amendments made at the v0.1.0 gate.
+
 ## Licence
 
 MIT. All code original; no third-party code or assets. See `../ASSETS-ORIGIN.md`.

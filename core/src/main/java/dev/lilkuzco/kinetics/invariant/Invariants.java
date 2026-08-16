@@ -102,7 +102,8 @@ public final class Invariants {
     }
 
     /**
-     * I3 - energy honesty. An unpowered body's mechanical energy may only fall.
+     * I3 (as ratified, amendment A1) - an unpowered body's mechanical energy may only fall,
+     * <b>except by at most the work the wind could have done on it</b>.
      *
      * <p>Semi-implicit Euler loses a fixed {@code g^2*dt^2/2} per step by construction, so the
      * expected sign is always negative and any measurable <em>gain</em> means energy is being
@@ -161,7 +162,15 @@ public final class Invariants {
         }
     }
 
-    /** I5 - drag must oppose the airspeed vector, never assist it. */
+    /**
+     * I5 (as ratified) - drag must oppose the <b>airspeed</b> vector, never assist it; lift must
+     * be exactly perpendicular to it and is integrated as a rotation of the velocity rather than
+     * an addition (amendment A2), so it does no work at any step size.
+     *
+     * <p>"Airspeed, not velocity" is the load-bearing half of the wording. It is what makes drag
+     * behave correctly in a crosswind, and it is also precisely why the wind can do work on a
+     * body - which is what amendment A1 to I3 had to accommodate.
+     */
     public void checkDrag(KineticBody body, Vec3 dragForce, Vec3 airspeed) {
         if (dragForce.lengthSq() < 1e-24 || airspeed.lengthSq() < 1e-18) return;
         double alignment = dragForce.dot(airspeed);

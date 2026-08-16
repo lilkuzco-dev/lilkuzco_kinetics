@@ -1,0 +1,96 @@
+# PHYSICS-CONSTITUTION.md — lilkuzco_kinetics
+
+The twelve invariants, as **ratified 2026-08-16** at the v0.1.0 gate.
+
+These are build-failing. A violation is a P0 physics bug: **fix the model, never special-case
+the symptom.** Several cannot be violated by any code path at all, and that is the stronger
+arrangement — there is nothing to check because there is nothing to break.
+
+| | Enforced by | Where |
+|---|---|---|
+| I1 continuity | check, every substep | `Invariants.checkContinuity` + `SweptCollision` |
+| I2 bounded forces | **construction** | clamp applied before the state update, no unclamped value exists |
+| I3 energy honesty | check, every substep | `Invariants.checkEnergy` |
+| I4 mass accounting | **construction** + check | mass derived, not stored; one fuel door |
+| I5 drag/lift sanity | **construction** | drag built as a negative multiple of the airspeed unit vector |
+| I6 turn authority | **construction** | turns come from lift the airframe can actually make |
+| I7 determinism | golden hashes | `GoldenTests`, `java.lang.Math` only |
+| I8 fuzz immunity | 10,000 cases/run | `FuzzTests` |
+| I9 no magic numbers | check + loader | `Constants` throws on a missing key |
+| I10 single damage door | **construction** | sealed event hierarchy, no damage field anywhere |
+| I11 scale audit | generated + verified | `ScaleAudit` |
+| I12 quaternion sanity | check, every substep | renormalised unconditionally |
+
+---
+
+## Amendments ratified at the v0.1.0 gate
+
+Three changes to the constitution as originally written. Two came from the fuzz harness, one
+from the golden battery. All three were fixed in the model.
+
+### A1 — I3 now bounds wind work rather than forbidding it
+
+**Original wording:** *"coasting/ballistic bodies monotonically lose energy to drag."*
+
+**As ratified:** an unpowered body's mechanical energy may only fall, **except by at most the
+work the wind could have done on it**, bounded by `(|F_drag| + |F_lift|) · |v_wind| · dt / m`.
+With RB7 wind disabled the allowance is exactly zero and the strict form applies unchanged —
+which is the case every golden trajectory runs under.
+
+*Why.* The original wording was simply wrong when wind is on. Drag opposes the **airspeed**, not
+the ground velocity (that is I5's own requirement), so a body being blown along genuinely gains
+mechanical energy in the world frame. The wind does work on it, exactly as it does on a leaf.
+Forbidding that would have forced the model to be wrong in order to satisfy the invariant.
+
+*Found by:* the I8 fuzz harness, 317 breaches across 6,000 randomised flights.
+
+### A2 — I3 is enforced by rotating lift, not by tolerating its error
+
+**As ratified:** lift is applied as a **rotation of the velocity vector** through
+`atan2(a⊥·dt, |v|)`, never as an addition. The parallel component, drag and gravity remain
+additive.
+
+*Why.* Adding a perpendicular acceleration in any Euler scheme manufactures energy
+quadratically: `|v + a⊥dt|² = |v|² + |a⊥dt|²`. Usually that is lost in the noise. It is not lost
+in the noise when `a·dt` is comparable to `|v|` — a 90 g airframe at 3 m/s was gaining **40 J/kg
+per substep**. Lift does no work, so the honest integration is the one that says so exactly, at
+any step size.
+
+The substep planner gained a second bound at the same time: acceleration × substep may not
+exceed 20% of the body's own speed. The displacement bound alone cannot catch this, because a
+slow body under enormous acceleration covers almost no distance while its velocity vector swings
+through most of a right angle.
+
+*Found by:* the same fuzz sweep, after A1 removed the wind cases.
+
+### A3 — TERMINAL is a powered phase, and `BOOST → TERMINAL` is legal
+
+**As ratified:** `FlightPhase.isPowered()` is true for **BOOST and TERMINAL**, and BOOST may
+transition directly to TERMINAL.
+
+*Why.* The proximity fuse arms in TERMINAL. A short-burn interceptor — 1.25 s of motor, 1.3 s to
+intercept — was still in BOOST at closest approach, so it flew through its target at **1.08 m**
+with the fuse safed and was scored a 23 m miss. Real interceptors routinely arrive before
+burnout; making the endgame wait for the motor to quit is the bug, not the symptom.
+
+Two further corrections went in alongside it, both real and both found by golden scenarios:
+
+- The **seeker was not updated during boresight alignment**, so PN started cold on a target it
+  was already crossing. A head pointed straight at the target during an alignment turn is in the
+  best position it will ever be in; skipping the look cost a 113 m miss.
+- The alignment law was **pure pursuit**, which adds velocity toward the target but does nothing
+  about the velocity the missile already has going elsewhere. It is now velocity-to-be-gained,
+  solved against the missile's *expected* speed rather than its current closing velocity — the
+  latter is near zero at launch for an off-boresight shot and returns an aim point in the wrong
+  hemisphere. With this, a 120° off-boresight launch over 800 m hits at **0.4 mm**.
+
+---
+
+## Open work (not v0.1.0 blockers)
+
+- **GC tuning before a real combat load.** The 20-minute soak holds 0.74 ms mean and 1.39 ms p99
+  against a 2 ms budget, but a single tick hit **34 ms** — a collection pause, not sustained
+  cost. Under a real warfront engagement the allocation rate will be higher than the soak's.
+  Investigate allocation in the hot path (`Vec3` is a record and every operation allocates) and
+  whether the server's collector needs tuning, before the library carries live combat. Tracked
+  as issue #1.
