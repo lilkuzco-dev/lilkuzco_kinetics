@@ -44,10 +44,28 @@ public final class GravityTurn {
         this.aoaLimitDeg = k.d("limits.ascent_aoa_limit_deg");
     }
 
-    /** Standard program: kick at a tenth of the way up, horizontal by the Karman line. */
+    /**
+     * Standard program: kick just out of the thick air, horizontal by the reference orbit.
+     *
+     * <p><b>The insertion altitude is the reference orbit, not the Karman line, and the
+     * difference is the difference between reaching orbit and crashing.</b> The first version
+     * pitched to fully horizontal at the Karman line - 250 m - which sounds right because that
+     * is where the atmosphere ends and where insertion is judged. It is not right: a vehicle
+     * flying horizontally at 250 m has stopped climbing while gravity has not stopped pulling,
+     * so it arcs straight back into the ground with most of its propellant still aboard. Every
+     * launch flown over real terrain crashed.
+     *
+     * <p>Pitching over toward the reference orbit altitude instead keeps the program steep
+     * through the region that matters: at 250 m it is still 87 degrees nose-up, so the vehicle
+     * climbs out of the atmosphere and only lies down once it is genuinely high.
+     *
+     * <p>Found by cosmos, kinetics' first consumer. The v0.1.0 golden missed it because the
+     * two-stage launch flew over {@code WorldProbe.empty()} - a world with no ground cannot
+     * catch a vehicle flying into the ground. The golden now flies over flat terrain.
+     */
     public static GravityTurn standard(Constants k) {
         double karman = k.d("atmosphere.karman_altitude_game");
-        return new GravityTurn(k, karman * 0.08, karman, 0.6);
+        return new GravityTurn(k, karman * 0.08, k.d("orbit.reference_orbit_altitude"), 0.6);
     }
 
     /**

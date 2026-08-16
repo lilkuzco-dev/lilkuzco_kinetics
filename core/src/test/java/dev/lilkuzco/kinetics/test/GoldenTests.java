@@ -349,6 +349,14 @@ public final class GoldenTests {
                 launch.trace.events.ofType(KineticEvent.Staging.class).size() == 2,
                 launch.trace.events.ofType(KineticEvent.Staging.class).size() + " staging events");
 
+        // The regression guard: a launch vehicle must not fly into the ground before burnout.
+        h.isTrue("  it never touched the ground during the burn",
+                !launch.trace.events.has(KineticEvent.Impact.class),
+                launch.trace.events.has(KineticEvent.Impact.class)
+                        ? "IMPACT during ascent — the pitch program is flying it into the terrain"
+                        : String.format("apex %.0f m during a %.1f s burn",
+                                launch.trace.peakAltitude, launch.body.age()));
+
         OrbitalRegistry registry = new OrbitalRegistry(k);
         var result = registry.attemptInsertion("sat-2stage", launch.body.achievedDeltaV(),
                 0.0, 45.0, 0.0, 0.0, launch.trace.events);
@@ -610,7 +618,10 @@ public final class GoldenTests {
 
     private static Launch fly(Constants k, String profileId, long seed) {
         Profile p = Sim.profile(k, profileId);
-        Environment env = Environment.overworld(k, WorldProbe.empty());
+        // Flat ground, NOT an empty world. A launch flown over nothing cannot fail by flying
+        // into the ground, which is exactly how the v0.1.0 gravity-turn bug survived this test.
+        Environment env = Environment.overworld(k,
+                WorldProbe.flatGround((int) k.d("world.sea_level_y") - 1));
         KineticBody body = Sim.body("rocket", p, k,
                 new Vec3(0, Sim.y(k, 0.0), 0), Vec3.ZERO, FlightPhase.RAIL);
         FlightDirector director = new FlightDirector(k, env, body,

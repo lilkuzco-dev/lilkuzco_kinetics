@@ -45,7 +45,7 @@ public final class KineticsMod implements ModInitializer {
         }
 
         LOG.info("kinetics {}: g0={} m/s^2, planet R={} m, orbit dv={} m/s, {} scaled constants",
-                "0.1.0",
+                "0.1.1",
                 constants.d("gravity.g0"),
                 constants.d("orbit.planet_radius"),
                 constants.d("orbit.delta_v_to_orbit"),

@@ -44,6 +44,11 @@ java { withSourcesJar() }
 
 publishing {
 	publications {
-		mavenJava(MavenPublication) { from components.java }
+		mavenJava(MavenPublication) {
+			// Consumers coordinate on dev.lilkuzco:kinetics-core, not on the Gradle project
+			// name, which would publish a uselessly generic 'core'.
+			artifactId = 'kinetics-core'
+			from components.java
+		}
 	}
 }
