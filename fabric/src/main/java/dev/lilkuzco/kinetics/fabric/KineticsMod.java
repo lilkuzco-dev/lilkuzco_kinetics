@@ -44,8 +44,14 @@ public final class KineticsMod implements ModInitializer {
                     + ". Refusing to start on a broken scale mapping (I11).");
         }
 
+        // Read from the loader, never hardcoded. A pinned string is a log line that goes stale
+        // silently: 0.1.3 shipped announcing itself as 0.1.2, and the one place anybody looks to
+        // confirm which build is running was the one place that lied about it.
         LOG.info("kinetics {}: g0={} m/s^2, planet R={} m, orbit dv={} m/s, {} scaled constants",
-                "0.1.2",
+                net.fabricmc.loader.api.FabricLoader.getInstance()
+                        .getModContainer("kinetics")
+                        .map(c -> c.getMetadata().getVersion().getFriendlyString())
+                        .orElse("unknown"),
                 constants.d("gravity.g0"),
                 constants.d("orbit.planet_radius"),
                 constants.d("orbit.delta_v_to_orbit"),

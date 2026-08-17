@@ -19,6 +19,8 @@ public final class Environment {
     private final WorldProbe world;
     private final double gravityScalar;
     private final double seaLevelY;
+    private final double terrainCeiling;
+    private final int terrainSearchDepth;
     private final double metersPerBlock;
     private final double g0;
 
@@ -30,6 +32,8 @@ public final class Environment {
         this.world = world;
         this.gravityScalar = gravityScalar;
         this.seaLevelY = constants.d("world.sea_level_y");
+        this.terrainCeiling = constants.d("landing.terrain_search_ceiling");
+        this.terrainSearchDepth = (int) constants.d("landing.terrain_search_depth");
         this.metersPerBlock = constants.d("world.meters_per_block");
         this.g0 = constants.d("gravity.g0");
     }
@@ -68,6 +72,30 @@ public final class Environment {
     /** Altitude in metres above the sea-level datum, from a world y coordinate. */
     public double altitudeOf(double worldY) {
         return (worldY - seaLevelY) * metersPerBlock;
+    }
+
+    /**
+     * World Y of the surface under a point - the level a landing vehicle actually has to stop at.
+     *
+     * <p><b>Not the same as sea level, and the difference is the whole reason this exists.</b> The
+     * suicide-burn height is solved for the distance available before contact; solving it against
+     * sea level on a world whose surface sits 78 blocks higher means the burn is sized for 78
+     * blocks it will never get, and a correctly fuelled lander arrives still moving. That is
+     * exactly what a lunar descent over generated terrain did - 15.7 m/s at the surface against
+     * 5.3 m/s over the flat test ground, and the flat ground was what hid it.
+     *
+     * <p>Falls back to sea level for a clear column, which is what an empty test world is.
+     */
+    public double groundYBelow(double x, double z, double fromY) {
+        int ceiling = (int) Math.min(fromY, terrainCeiling);
+        int ground = world.groundHeight(x, z, ceiling, terrainSearchDepth);
+        return ground == Integer.MIN_VALUE ? seaLevelY : ground + 1.0;
+    }
+
+    /** Height of a point above the surface beneath it, m. */
+    public double heightAboveGround(Vec3 position) {
+        return (position.y() - groundYBelow(position.x(), position.z(), position.y()))
+                * metersPerBlock;
     }
 
     /** Inverse of {@link #altitudeOf}. */

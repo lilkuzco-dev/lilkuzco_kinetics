@@ -634,6 +634,21 @@
       "value": 0.5,
       "units": "m/s^2",
       "source_note": "Least net deceleration - thrust over mass, minus local gravity - at which a landing burn is attempted at all. Below it the vehicle cannot arrest its fall no matter how long it burns, and firing anyway means arriving fast AND empty. Reporting the burn as impossible is the honest failure (RD3)."
+    },
+    "terrain_search_ceiling": {
+      "value": 320.0,
+      "units": "world Y",
+      "source_note": "Highest world Y at which a terrain column is worth scanning. A lander 30 km up is not near any block; starting the scan from its own altitude would be a 30,000-block walk down an empty column every tick. Set above any buildable surface."
+    },
+    "terrain_search_depth": {
+      "value": 400.0,
+      "units": "blocks",
+      "source_note": "How far down a terrain scan looks before giving up and using sea level. Covers the full 384-block world height with margin, so a lander over a deep crater still finds its floor."
+    },
+    "terrain_sample_interval": {
+      "value": 20.0,
+      "units": "ticks",
+      "source_note": "How often the ground beneath a descending vehicle is re-sampled. A retro-burn is very nearly vertical, so the column under it barely changes; sampling every tick would pay for a 400-deep block scan twenty times a second to learn the same number."
     }
   }
 }

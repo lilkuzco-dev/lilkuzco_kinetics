@@ -359,6 +359,22 @@ public final class ClosedFormTests {
         h.check("the burn starts near the closed-form height, not at the top",
                 burnHeight < startAltitude * 0.5,
                 String.format("burn height %.0f m of a %.0f m fall", burnHeight, startAltitude));
+
+        // THE SAME LANDING ONTO HIGH GROUND. This is the check that flat ground cannot make:
+        // a burn solved against sea level arrives on a 200-block plateau with 200 blocks of
+        // stopping distance it never gets. Over generated lunar terrain that showed up as 15.7
+        // m/s instead of 5.3, and nothing in the flat-ground battery could see it.
+        Environment plateau = new Environment(k, moon.atmosphere(),
+                dev.lilkuzco.kinetics.env.WindField.disabled(k),
+                WorldProbe.flatGround(groundY + 200), k.d("gravity.dimension_scalars.moon"));
+        double[] highLast = {0.0};
+        Sim.Trace onHigh = flyLander(k, plateau, groundY, startAltitude, arrival, dry, fuel,
+                thrust, (tick, body) -> { if (body.speed() > 0.0) highLast[0] = body.speed(); });
+        h.check("a landing onto high ground is as soft as one at sea level",
+                onHigh.finalPhase == FlightPhase.LANDED
+                        && highLast[0] <= descent.touchdownSpeed() * 3.0,
+                String.format("%.3f m/s onto ground 200 blocks up (%s)", highLast[0],
+                        onHigh.finalPhase));
         h.endSuite();
     }
 

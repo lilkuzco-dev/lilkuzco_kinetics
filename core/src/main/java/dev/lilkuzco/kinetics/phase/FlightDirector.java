@@ -65,6 +65,9 @@ public final class FlightDirector {
     private final ProportionalNavigation pn;
     private final GravityTurn gravityTurn;
     private final PoweredDescent poweredDescent;
+    private final double terrainSampleSeconds;
+    private double cachedGroundY = Double.NaN;
+    private double groundSampledAt;
     private LoftProfile loft;
 
     private final double karmanAltitude;
@@ -105,6 +108,8 @@ public final class FlightDirector {
         this.pn = new ProportionalNavigation(k, profile.seeker());
         this.gravityTurn = mission == Mission.LAUNCH ? GravityTurn.standard(k) : null;
         this.poweredDescent = mission == Mission.LANDING ? new PoweredDescent(k) : null;
+        this.terrainSampleSeconds = k.d("landing.terrain_sample_interval")
+                * k.d("world.tick_seconds");
         this.loft = null;
 
         this.karmanAltitude = k.d("atmosphere.karman_altitude_game");
@@ -387,17 +392,39 @@ public final class FlightDirector {
         PoweredDescent.Command command = descentCommand(altitude);
         if (!command.burn()) return false;
         return body.phases().transition(FlightPhase.LANDING, body.age(),
-                String.format("retro-burn at %.1f m, %.1f m/s, burn height %.1f m",
-                        altitude, body.velocity().length(), command.burnAltitude()), events);
+                String.format("retro-burn %.1f m above the surface at %.1f m/s, burn height %.1f m",
+                        heightAboveGround(), body.velocity().length(), command.burnAltitude()),
+                events);
     }
 
-    /** The descent law's verdict at this altitude, using the thrust actually available there. */
-    private PoweredDescent.Command descentCommand(double altitude) {
+    /**
+     * The descent law's verdict, using the thrust available here and the ground actually below.
+     *
+     * <p>Height is measured to the SURFACE, not to sea level. A burn solved against sea level on
+     * terrain that sits 78 blocks higher is a burn sized for 78 blocks of stopping distance that
+     * do not exist, and the vehicle meets the ground still moving. The flat-ground test world hid
+     * this completely; only a descent onto generated terrain showed it.
+     *
+     * <p>The column is re-sampled once a second rather than every tick. A retro-burn is very
+     * nearly vertical, so the ground under it barely moves, and a 400-block scan twenty times a
+     * second to learn the same number is pure cost.
+     */
+    private PoweredDescent.Command descentCommand(double ignoredAltitude) {
         var stage = body.currentStage();
         double thrust = stage == null ? 0.0
                 : stage.effectiveThrust(env.pressureRatioAt(body.position().y()), engineFrame);
-        return poweredDescent.decide(altitude, body.velocity(), thrust, body.mass(),
+        return poweredDescent.decide(heightAboveGround(), body.velocity(), thrust, body.mass(),
                 env.gravity());
+    }
+
+    private double heightAboveGround() {
+        double now = body.age();
+        if (Double.isNaN(cachedGroundY) || now - groundSampledAt >= terrainSampleSeconds) {
+            cachedGroundY = env.groundYBelow(body.position().x(), body.position().z(),
+                    body.position().y());
+            groundSampledAt = now;
+        }
+        return Math.max(0.0, body.position().y() - cachedGroundY);
     }
 
     /** Retrograde at full throttle, or coast once slow enough to settle. */
