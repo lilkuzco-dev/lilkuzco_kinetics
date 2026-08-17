@@ -50,6 +50,13 @@
         "real_value": 1.62,
         "scale_factor": 9.80665,
         "source_note": "Lunar surface gravity 1.62 m/s^2 / 9.80665 = 0.1654, i.e. the familiar 1/6 relationship (1/6 = 0.1667). The scalar is the ratio the sim uses; the real value is the measured lunar acceleration in m/s^2, so the factor between them is g0 itself. Not a game scaling - the Moon really is this much weaker."
+      },
+      "haze": {
+        "value": 0.13787,
+        "units": "dimensionless",
+        "real_value": 1.352,
+        "scale_factor": 9.80665,
+        "source_note": "Outer-moon surface gravity, Titan's measured 1.352 m/s^2 over g0. As with the Moon the factor between the scalar and the real value is g0 itself, and this is not a game scaling - a body this size really is this weak."
       }
     }
   },
@@ -353,6 +360,23 @@
       "real_value": 1870.0,
       "scale_factor": 4.215509467989179,
       "source_note": "Powered descent to the lunar surface, scaled by the velocity factor 4.2154. Scaled rather than derived for the same reason as lunar_orbit_insertion_delta_v. This is the number that makes landing a rocketry problem instead of a cutscene: with no atmosphere there is nothing to brake against, so every metre per second of arrival speed must be cancelled by the engine (RD1). Real figure: ~1870 m/s from low lunar orbit."
+    },
+    "haze_distance": {
+      "value": 41100000.0,
+      "units": "m",
+      "source_note": "The outer moon's orbital radius: 120 planetary radii. DELIBERATELY HAS NO real_value - it is a placement, not a scaled measurement of anything, and dressing it as one would be exactly the dishonesty the scale audit exists to catch. The number is chosen against a real constraint: the primary's sphere of influence is 145.1 R, so anything beyond that is not bound to the primary at all and would have to be re-homed when the heliocentric frame lands (see HELIOCENTRIC.md, proposed I16). 120 R sits inside it with margin, and is 1.99x the lunar distance - far enough that the coast is a different journey."
+    },
+    "haze_orbit_insertion_delta_v": {
+      "value": 332.1,
+      "units": "m/s",
+      "real_value": 1400.0,
+      "scale_factor": 4.215597711532671,
+      "source_note": "Capture into orbit around the outer moon, scaled by the velocity factor 4.2154. Scaled rather than derived for the same reason the lunar figures are: deriving it needs the moon's own mu and radius, i.e. a second gravitating body. Real analogue: a Titan-class capture is on the order of 1400 m/s."
+    },
+    "haze_descent_delta_v": {
+      "value": 0.0,
+      "units": "m/s",
+      "source_note": "ZERO, AND THAT IS THE ENTIRE POINT OF THIS BODY. The outer moon has an atmosphere, so the descent is flown on drag and parachutes rather than bought with propellant - Huygens reached Titan's surface on chutes alone. Where the Moon charges 443.6 m/s to land because there is nothing to brake against, here the air does it for free and the price is reentry heating instead. A lander for this body is a capsule, not a rocket."
     }
   },
   "reentry": {

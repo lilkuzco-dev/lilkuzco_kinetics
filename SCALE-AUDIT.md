@@ -21,6 +21,7 @@ Everything else in the table below is a *derived consequence* of those three, or
 | Constant | Game value | Real value | Factor | Units | Consistent? |
 |---|---:|---:|---:|---|:--:|
 | `gravity.dimension_scalars.moon` | 0.16519 | 1.62 | 9.80665 | dimensionless | yes |
+| `gravity.dimension_scalars.haze` | 0.13787 | 1.352 | 9.80665 | dimensionless | yes |
 | `atmosphere.scale_height` | 55 | 8,500 | 154.545455 | m | yes |
 | `atmosphere.karman_altitude_game` | 250 | 38636.36 | 154.545455 | m above sea level | yes |
 | `propulsion.kerolox_vacuum_exhaust_velocity_effective` | 723.58 | 3049.87 | 4.215 | m/s | yes |
@@ -34,6 +35,7 @@ Everything else in the table below is a *derived consequence* of those three, or
 | `orbit.lunar_transfer_delta_v` | 740.1 | 3,120 | 4.215647 | m/s | yes |
 | `orbit.lunar_orbit_insertion_delta_v` | 213.5 | 900 | 4.215457 | m/s | yes |
 | `orbit.lunar_descent_delta_v` | 443.6 | 1,870 | 4.215509 | m/s | yes |
+| `orbit.haze_orbit_insertion_delta_v` | 332.1 | 1,400 | 4.215598 | m/s | yes |
 
 Every declared factor reconstructs its own real value to within 0.1%. The audit checks this rather than trusting the declaration — a factor that disagreed with its own values would be a bookkeeping bug, and it would appear here rather than in a trajectory a month later.
 
@@ -64,6 +66,8 @@ Every scaled constant carries the reasoning for its value.
 
 **`gravity.dimension_scalars.moon`** — Lunar surface gravity 1.62 m/s^2 / 9.80665 = 0.1654, i.e. the familiar 1/6 relationship (1/6 = 0.1667). The scalar is the ratio the sim uses; the real value is the measured lunar acceleration in m/s^2, so the factor between them is g0 itself. Not a game scaling - the Moon really is this much weaker.
 
+**`gravity.dimension_scalars.haze`** — Outer-moon surface gravity, Titan's measured 1.352 m/s^2 over g0. As with the Moon the factor between the scalar and the real value is g0 itself, and this is not a game scaling - a body this size really is this weak.
+
 **`atmosphere.scale_height`** — COMPRESSION 1 of 2. Real atmospheric scale height is 8500 m; Minecraft's usable band is only 257 m. Compressing H by 154.55x makes the exponential profile fit inside build limits, so altitude is a real tactical variable rather than decoration. Equivalent reading: game altitude x 154.55 = the real altitude with the same air density. rho(250 m) = 0.0130 kg/m^3, which is genuinely the real density near 38.6 km.
 
 **`atmosphere.karman_altitude_game`** — Virtual Karman line: the drag-negligible boundary and the orbital-insertion handoff altitude. Sits at y=313, just inside the build ceiling, so it is physically reachable. Its real-altitude equivalent is 38.6 km rather than the real Karman line's 100 km - the honest consequence of COMPRESSION 1, recorded rather than hidden.
@@ -89,4 +93,6 @@ Every scaled constant carries the reasoning for its value.
 **`orbit.lunar_orbit_insertion_delta_v`** — Braking into lunar orbit on arrival, scaled by the same velocity factor 4.2154. SCALED, NOT DERIVED, and that distinction is deliberate: deriving it would need a lunar mu and radius, i.e. a second gravitational body in the model, which Phase B does not have. The Moon here is a destination with a surface gravity, not a primary with its own orbits. Real Apollo LOI was about 900 m/s. Stated so a later phase that does add lunar orbits knows exactly which number becomes derived.
 
 **`orbit.lunar_descent_delta_v`** — Powered descent to the lunar surface, scaled by the velocity factor 4.2154. Scaled rather than derived for the same reason as lunar_orbit_insertion_delta_v. This is the number that makes landing a rocketry problem instead of a cutscene: with no atmosphere there is nothing to brake against, so every metre per second of arrival speed must be cancelled by the engine (RD1). Real figure: ~1870 m/s from low lunar orbit.
+
+**`orbit.haze_orbit_insertion_delta_v`** — Capture into orbit around the outer moon, scaled by the velocity factor 4.2154. Scaled rather than derived for the same reason the lunar figures are: deriving it needs the moon's own mu and radius, i.e. a second gravitating body. Real analogue: a Titan-class capture is on the order of 1400 m/s.
 
