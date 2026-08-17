@@ -115,6 +115,30 @@ caught it — loudly, correctly, and about ninety seconds of simulated flight af
 caused it went in. Rejecting it at construction turns a mid-flight P0 into an unmistakable message
 naming the profile. There is no such thing as a massless vehicle.
 
+## Amendment ratified at the cosmos economy gate (empire law)
+
+### A6 — unattended simulation runs on the server tick, never on an entity tick
+
+**Ratified as empire law, and it applies to every mod, not only to physics.**
+
+Anything that must keep progressing while nobody is nearby must be driven by the server tick or
+recomputed from an epoch. It may never hang off `Entity.tick()` or `BlockEntity.serverTick()`,
+because those do not run for unloaded chunks — and a simulation attached to them does not fail
+loudly, it silently does nothing while everything downstream reports success.
+
+Kinetics already obeys this and should be read as the reference implementation:
+
+- `KineticsService.tick` integrates every body from the **server** tick. A rocket flies whether or
+  not anyone is watching it, and `RocketEntity` is explicitly a view — if it never ticks, the only
+  thing lost is the plume.
+- `OrbitalRegistry` goes further and **never accumulates**: satellite state is propagated from an
+  epoch, so an orbit is correct whether it was ticked once, a thousand times, or not at all. State
+  that cannot drift cannot drift while you are not looking (RE1).
+
+This was learned three times in one campaign by consumers of this library — launch insertion,
+capsule recovery, and the lunar ISRU roster — each time as a different-looking bug with the same
+root. It is written into `mod-installer/CLAUDE.md` as rule 7 so there is no fourth.
+
 ## Open work (not v0.1.0 blockers)
 
 - **GC tuning before a real combat load.** The 20-minute soak holds 0.74 ms mean and 1.39 ms p99

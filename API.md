@@ -59,6 +59,14 @@ KineticsService.Handle missile = kinetics.spawn(
 | `LAUNCH` | gravity turn → staging → orbital insertion, or an honest ballistic failure |
 | `LANDING` | coast → retro-burn at the closed-form suicide-burn height → touchdown, or an arrival at speed |
 
+> **Empire law: consume this from the server tick.**
+> Every body is integrated in `KineticsService.tick`, which runs on the server tick, and the
+> orbital registry is propagated from an epoch rather than accumulated. A consumer that resolves
+> outcomes from an entity or block-entity tick throws that away, because those do not run for
+> unloaded chunks — a launch flown with nobody nearby completes correctly inside kinetics and the
+> result goes nowhere. Entities are views. See `mod-installer/CLAUDE.md` rule 7.
+
+
 The service ticks every live body on `END_SERVER_TICK`. Supply targets and countermeasures per
 tick through the two functions on `tick(...)`; pass `null` for either if you have none.
 
