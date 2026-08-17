@@ -21,6 +21,11 @@ import dev.lilkuzco.kinetics.phase.FlightPhase;
 import dev.lilkuzco.kinetics.profile.EngineFrame;
 import dev.lilkuzco.kinetics.profile.Profile;
 import dev.lilkuzco.kinetics.profile.Stage;
+import dev.lilkuzco.kinetics.math.Quat;
+import dev.lilkuzco.kinetics.profile.Airframe;
+import dev.lilkuzco.kinetics.profile.Recovery;
+import dev.lilkuzco.kinetics.profile.SeekerSpec;
+import dev.lilkuzco.kinetics.propulsion.PoweredDescent;
 import dev.lilkuzco.kinetics.propulsion.Propulsion;
 import dev.lilkuzco.kinetics.sensors.Radar;
 
@@ -43,6 +48,8 @@ public final class ClosedFormTests {
         altitudeVaryingIsp(h, k);
         orbitalPeriodAndEscape(h, k);
         groundTrackShift(h, k);
+        hohmannTransfer(h, k);
+        poweredDescent(h, k);
         radarFourthRoot(h, k);
         stallCurve(h, k);
         inducedDrag(h, k);
@@ -288,6 +295,161 @@ public final class ClosedFormTests {
                 m.visViva(r, r), vCirc, 1e-12, "m/s");
         h.near("mu is derived from g0 and R", m.mu(),
                 k.d("gravity.g0") * m.planetRadius() * m.planetRadius(), 1e-6, "m^3/s^2");
+        h.endSuite();
+    }
+
+    /**
+     * RD6 - the retro-burn that lands a vehicle on an airless world.
+     *
+     * <p>Two claims, both checkable without running anything: a lander with enough delta-v arrives
+     * under the touchdown speed, and one without it does not. The second matters more. A landing
+     * system that always works is a cutscene; this one has to fail when the arithmetic says it
+     * should, and the same integrator has to produce both outcomes.
+     */
+    private static void poweredDescent(Harness h, Constants k) {
+        h.suite("RD6 - powered descent on an airless world");
+        PoweredDescent descent = new PoweredDescent(k);
+        int groundY = (int) k.d("world.sea_level_y");
+        Environment moon = Sim.moon(k, groundY);
+        double g = moon.gravity();
+
+        h.metric("lunar gravity", String.format("%.4f m/s^2 (%.3f g)", g, g / k.d("gravity.g0")));
+
+        // A vehicle arriving at 250 m/s from 30 km, with a comfortable thrust margin.
+        double arrival = 250.0, startAltitude = 30000.0;
+        double dry = 160.0, fuel = 300.0, thrust = 2500.0;
+
+        double need = descent.idealDeltaV(arrival, thrust, dry + fuel, g);
+        h.metric("ideal landing delta-v", String.format(
+                "%.1f m/s to cancel %.0f m/s (gravity loss %.1f m/s)", need, arrival,
+                need - arrival));
+        h.check("gravity makes the burn cost more than the arrival speed",
+                need > arrival, String.format("%.1f > %.1f m/s", need, arrival));
+
+        // Impact speed is read from the tick BEFORE arrival: kinetics zeroes velocity on contact,
+        // so the final state reports 0.0 m/s for a perfect landing and for a crater alike. Cosmos
+        // hit exactly this reading its capsule's arrival speed.
+        double[] lastSpeed = {0.0};
+        Sim.Trace landed = flyLander(k, moon, groundY, startAltitude, arrival, dry, fuel, thrust,
+                (tick, body) -> { if (body.speed() > 0.0) lastSpeed[0] = body.speed(); });
+        h.check("a fuelled lander reaches LANDED",
+                landed.finalPhase == FlightPhase.LANDED, String.valueOf(landed.finalPhase));
+        double touchdown = lastSpeed[0];
+        h.check("touchdown speed is survivable",
+                touchdown <= descent.touchdownSpeed() * 3.0,
+                String.format("%.3f m/s (threshold %.1f)", touchdown, descent.touchdownSpeed()));
+        h.metric("propellant used", String.format("%.1f of %.0f kg",
+                fuel - landed.last().stageFuel(), fuel));
+
+        // The same arrival with a quarter of the propellant. It must NOT land softly.
+        double[] dryLast = {0.0};
+        Sim.Trace dryTank = flyLander(k, moon, groundY, startAltitude, arrival, dry, 40.0, thrust,
+                (tick, body) -> { if (body.speed() > 0.0) dryLast[0] = body.speed(); });
+        double hardSpeed = dryLast[0];
+        h.metric("under-fuelled final phase", String.valueOf(dryTank.finalPhase));
+        h.check("an under-fuelled lander arrives fast, not softly",
+                hardSpeed > descent.touchdownSpeed() * 5.0,
+                String.format("%.1f m/s", hardSpeed));
+        h.metric("under-fuelled arrival", String.format(
+                "%.1f m/s vs the fuelled %.2f m/s", hardSpeed, touchdown));
+
+        // The burn must be LATE. Lighting at 30 km and hovering down is the failure mode the
+        // suicide-burn law exists to avoid, and it would still "land" - just on empty tanks.
+        double burnHeight = (arrival * arrival) / (2.0 * (thrust / (dry + fuel) - g));
+        h.check("the burn starts near the closed-form height, not at the top",
+                burnHeight < startAltitude * 0.5,
+                String.format("burn height %.0f m of a %.0f m fall", burnHeight, startAltitude));
+        h.endSuite();
+    }
+
+    private static Sim.Trace flyLander(Constants k, Environment moon, int groundY,
+                                       double startAltitude, double arrivalSpeed,
+                                       double dry, double fuel, double thrust,
+                                       java.util.function.BiConsumer<Integer, KineticBody> perTick) {
+        // Half the dry mass is the lander that stays, half is the descent stage that is shed.
+        Profile profile = new Profile("lander", dry / 2.0,
+                java.util.List.of(new Stage("descent", fuel, dry / 2.0, thrust, 283.0, 311.0)),
+                new Airframe(2.0, 0.0, 0.35, Double.POSITIVE_INFINITY,
+                        k.d("aerodynamics.oswald_efficiency_default"), 0.0,
+                        k.d("aerodynamics.default_stall_aoa_deg"),
+                        k.d("aerodynamics.post_stall_aoa_deg"),
+                        k.d("aerodynamics.post_stall_cl_fraction"),
+                        20.0, 1.0e9, 1.4, k.d("reentry.overheat_threshold_default"), 40.0),
+                Recovery.none(), SeekerSpec.none(), 0, 90.0, 0.0);
+
+        Vec3 start = new Vec3(0.0, groundY + startAltitude, 0.0);
+        Vec3 velocity = new Vec3(0.0, -arrivalSpeed, 0.0);
+        KineticBody body = new KineticBody("lander", profile, k, start, velocity,
+                Quat.between(new Vec3(0, 0, 1), velocity.normalized()), FlightPhase.DESCENT);
+        FlightDirector director = new FlightDirector(k, moon, body,
+                FlightDirector.Mission.LANDING, Sim.integrator(k), 1L);
+        return Sim.fly(body, moon, director, k, 60000, 40, null, java.util.List.of(),
+                perTick);
+    }
+
+    /**
+     * The trans-lunar transfer, against the closed form.
+     *
+     * <p>Checked here rather than trusted because the entire lunar mission's duration and its
+     * delta-v budget are read off these two numbers. If the transfer time were wrong, the whole
+     * of Phase B would be wrong in a way no playtest would catch - a coast that feels fine is
+     * indistinguishable from a coast that is right.
+     */
+    private static void hohmannTransfer(Harness h, Constants k) {
+        h.suite("RE2 - Hohmann transfer to the Moon");
+        OrbitalMechanics m = new OrbitalMechanics(k);
+
+        double r1 = m.radiusForAltitude(k.d("orbit.reference_orbit_altitude"));
+        double r2 = m.lunarDistance();
+        double a = (r1 + r2) / 2.0;
+
+        // t = pi*sqrt(a^3/mu), written out longhand so this is an independent computation.
+        double expected = Math.PI * Math.sqrt((a * a * a) / m.mu());
+        h.near("transfer time is half the ellipse period",
+                m.hohmannTransferTime(r1, r2), expected, 1e-6, "s");
+        h.near("lunarTransferTime uses the reference orbit",
+                m.lunarTransferTime(), expected, 1e-9, "s");
+        h.metric("trans-lunar coast", String.format("%.0f s (%.1f h simulated)",
+                expected, expected / 3600.0));
+
+        // The transfer ellipse must be bound: apogee at the Moon, perigee at the parking orbit.
+        h.near("transfer apogee is lunar distance", 2.0 * a - r1, r2, 1e-6, "m");
+        h.check("transfer ellipse is bound, not an escape",
+                m.specificEnergy(a) < 0.0, String.format("%.1f J/kg", m.specificEnergy(a)));
+
+        // The budgeted TLI must match what vis-viva actually asks for at the parking orbit.
+        double needed = m.hohmannFirstBurn(r1, r2);
+        h.near("budgeted TLI matches the vis-viva burn", m.lunarTransferDeltaV(), needed,
+                k.d("limits.lunar_transfer_delta_v_tolerance"), "m/s");
+        h.metric("TLI from the reference orbit", String.format("%.1f m/s (budget %.1f)",
+                needed, m.lunarTransferDeltaV()));
+
+        // The Moon must cost meaningfully more than orbit, or the tier above orbital is theatre.
+        double toOrbit = k.d("orbit.delta_v_to_orbit");
+        double toMoon = toOrbit + m.lunarTransferDeltaV();
+        h.check("the Moon costs at least 25% more delta-v than orbit",
+                toMoon / toOrbit >= 1.25, String.format("%.3fx", toMoon / toOrbit));
+        h.metric("ground to the Moon", String.format("%.0f m/s (%.3fx orbit)",
+                toMoon, toMoon / toOrbit));
+
+        // The full mission budget. TLI is the single costliest manoeuvre - as it is in reality,
+        // 3120 m/s against descent's 1870 - so the check is not which is largest but that
+        // DESCENT COSTS MORE THAN LOI. With no atmosphere to brake against, getting down from
+        // lunar orbit is dearer than getting into it, and that asymmetry is the whole reason the
+        // lander must carry its own propulsion rather than coasting to the ground.
+        double loi = k.d("orbit.lunar_orbit_insertion_delta_v");
+        double descent = k.d("orbit.lunar_descent_delta_v");
+        double surface = toMoon + loi + descent;
+        h.check("landing costs more than arriving",
+                descent > loi, String.format("descent %.1f m/s vs LOI %.1f m/s", descent, loi));
+        h.check("TLI is the single costliest manoeuvre, as in reality",
+                m.lunarTransferDeltaV() > descent,
+                String.format("TLI %.1f > descent %.1f > LOI %.1f m/s",
+                        m.lunarTransferDeltaV(), descent, loi));
+        h.check("the lunar surface costs more than half again what orbit costs",
+                surface / toOrbit >= 1.5, String.format("%.3fx", surface / toOrbit));
+        h.metric("ground to the lunar surface", String.format("%.0f m/s (%.3fx orbit)",
+                surface, surface / toOrbit));
         h.endSuite();
     }
 

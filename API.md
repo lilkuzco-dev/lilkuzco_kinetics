@@ -57,6 +57,7 @@ KineticsService.Handle missile = kinetics.spawn(
 | `BALLISTIC` | fired and forgotten; drag and gravity do the rest |
 | `GUIDED` | boost (with off-boresight alignment) → midcourse PN → terminal + fuse |
 | `LAUNCH` | gravity turn → staging → orbital insertion, or an honest ballistic failure |
+| `LANDING` | coast → retro-burn at the closed-form suicide-burn height → touchdown, or an arrival at speed |
 
 The service ticks every live body on `END_SERVER_TICK`. Supply targets and countermeasures per
 tick through the two functions on `tick(...)`; pass `null` for either if you have none.

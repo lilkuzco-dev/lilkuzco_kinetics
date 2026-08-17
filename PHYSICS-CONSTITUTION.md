@@ -86,6 +86,35 @@ Two further corrections went in alongside it, both real and both found by golden
 
 ---
 
+## Amendments ratified at the cosmos Phase B gate (v0.1.3)
+
+### A4 — `LANDING` is a powered phase, and `DESCENT → LANDING` is legal
+
+Landing on an airless world is not falling. With no atmosphere there is nothing to give energy
+to, so a vehicle arrives at whatever speed gravity gave it unless an engine cancels it — and that
+makes arriving intact a rocketry problem with a fuel bill, not a parachute problem.
+
+`LANDING` therefore joins `BOOST` and `TERMINAL` as a phase in which thrust exists. It is entered
+from `DESCENT` when the closed-form suicide-burn height is reached, and it exits to `LANDED`, to
+`TERMINATED`, or back to `DESCENT` when the tanks run dry mid-burn — which is the honest outcome
+of an under-fuelled lander and is exactly what the battery checks.
+
+**`LANDING` is declared last in the enum, out of the flight's natural order.** Trajectory states
+are hashed with the phase's ordinal in them, so inserting a phase mid-enum renumbers every phase
+after it and invalidates every committed golden hash — not because a trajectory changed, but
+because the numbering did. That happened once during this work and every golden failed at once.
+Appending keeps the goldens meaningful: they fail if and only if the physics moved.
+
+### A5 — a profile must have mass after its last stage is shed
+
+`payloadDryMass` must be strictly positive, enforced at construction.
+
+Kinetics deliberately sheds the final stage's structure at burnout, so a profile with no payload
+mass ends its flight at **zero kilograms**, and the next force divided by that mass is `NaN`. I1
+caught it — loudly, correctly, and about ninety seconds of simulated flight after the profile that
+caused it went in. Rejecting it at construction turns a mid-flight P0 into an unmistakable message
+naming the profile. There is no such thing as a massless vehicle.
+
 ## Open work (not v0.1.0 blockers)
 
 - **GC tuning before a real combat load.** The 20-minute soak holds 0.74 ms mean and 1.39 ms p99

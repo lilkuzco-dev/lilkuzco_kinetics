@@ -15,6 +15,7 @@ import dev.lilkuzco.kinetics.math.Vec3;
 import dev.lilkuzco.kinetics.profile.EngineFrame;
 import dev.lilkuzco.kinetics.profile.Profile;
 import dev.lilkuzco.kinetics.propulsion.GravityTurn;
+import dev.lilkuzco.kinetics.propulsion.PoweredDescent;
 import dev.lilkuzco.kinetics.sensors.Countermeasures;
 
 import java.util.List;
@@ -42,7 +43,15 @@ public final class FlightDirector {
         /** Seeker-guided: boost, midcourse PN, terminal. */
         GUIDED,
         /** Reaching orbit: gravity turn, staging, insertion or an honest ballistic failure. */
-        LAUNCH
+        LAUNCH,
+        /**
+         * Arriving intact: coast, then a retro-burn sized to the vehicle's own thrust (RD6).
+         *
+         * <p>Its own mission rather than a flag on LAUNCH because it is the opposite problem.
+         * A launch spends propellant to gain energy against a budget; a landing spends propellant
+         * to shed energy against a deadline, and the deadline is the ground.
+         */
+        LANDING
     }
 
     private final Constants k;
@@ -55,6 +64,7 @@ public final class FlightDirector {
     private final Seeker seeker;
     private final ProportionalNavigation pn;
     private final GravityTurn gravityTurn;
+    private final PoweredDescent poweredDescent;
     private LoftProfile loft;
 
     private final double karmanAltitude;
@@ -94,6 +104,7 @@ public final class FlightDirector {
                 ? new Seeker(body.id(), profile.seeker(), k) : null;
         this.pn = new ProportionalNavigation(k, profile.seeker());
         this.gravityTurn = mission == Mission.LAUNCH ? GravityTurn.standard(k) : null;
+        this.poweredDescent = mission == Mission.LANDING ? new PoweredDescent(k) : null;
         this.loft = null;
 
         this.karmanAltitude = k.d("atmosphere.karman_altitude_game");
@@ -205,11 +216,25 @@ public final class FlightDirector {
                 if (!body.hasFuel() && body.hasStagesRemaining()) body.advanceStage(events);
             }
             case DESCENT -> {
+                if (beginLandingBurn(altitude, events)) return;
                 double threshold = body.profile().airframe().overheatThreshold() * reentryFraction;
                 if (body.heatingRate() > threshold) {
                     body.phases().transition(FlightPhase.REENTRY, body.age(),
                             String.format("heating %.4g W/m2 above the %.4g W/m2 reentry threshold",
                                     body.heatingRate(), threshold), events);
+                }
+            }
+            case LANDING -> {
+                // Out of propellant mid-burn. It is a falling object again, and it will arrive at
+                // whatever speed it had - which is the honest outcome of an under-fuelled lander.
+                if (!body.hasFuel()) {
+                    if (body.hasStagesRemaining()) {
+                        body.advanceStage(events);
+                    } else {
+                        body.phases().transition(FlightPhase.DESCENT, body.age(),
+                                String.format("landing burn ran dry at %.1f m and %.1f m/s",
+                                        altitude, body.velocity().length()), events);
+                    }
                 }
             }
             case REENTRY -> {
@@ -304,8 +329,12 @@ public final class FlightDirector {
         }
 
         if (result.collided()) {
+            // Arriving under a burn is a landing, not a crash. Leaving LANDING out of this list
+            // meant a lander that had cancelled its velocity perfectly and settled at 0.4 m/s was
+            // still recorded as TERMINATED - the flight succeeded and the outcome said otherwise.
             FlightPhase next = body.phase() == FlightPhase.DESCENT
                     || body.phase() == FlightPhase.REENTRY
+                    || body.phase() == FlightPhase.LANDING
                     ? FlightPhase.LANDED : FlightPhase.TERMINATED;
             body.phases().transition(next, body.age(), "impact", events);
         }
@@ -341,9 +370,42 @@ public final class FlightDirector {
         return switch (body.phase()) {
             case BOOST -> boostCommand(dt, target, decoys, events);
             case MIDCOURSE, TERMINAL -> guidedCommand(dt, target, decoys, events);
+            case LANDING -> landingCommand();
             case STAGING -> ControlCommand.coast();
             default -> ControlCommand.coast();   // DESCENT, REENTRY: weathervane into the airflow
         };
+    }
+
+    /**
+     * Should the retro-burn start? Asked every tick during the fall, answered by the closed form.
+     *
+     * <p>Only for a LANDING mission with propellant left: an ordinary falling booster is not a
+     * lander, and a lander with dry tanks is not either.
+     */
+    private boolean beginLandingBurn(double altitude, EventSink events) {
+        if (poweredDescent == null || !body.hasFuel()) return false;
+        PoweredDescent.Command command = descentCommand(altitude);
+        if (!command.burn()) return false;
+        return body.phases().transition(FlightPhase.LANDING, body.age(),
+                String.format("retro-burn at %.1f m, %.1f m/s, burn height %.1f m",
+                        altitude, body.velocity().length(), command.burnAltitude()), events);
+    }
+
+    /** The descent law's verdict at this altitude, using the thrust actually available there. */
+    private PoweredDescent.Command descentCommand(double altitude) {
+        var stage = body.currentStage();
+        double thrust = stage == null ? 0.0
+                : stage.effectiveThrust(env.pressureRatioAt(body.position().y()), engineFrame);
+        return poweredDescent.decide(altitude, body.velocity(), thrust, body.mass(),
+                env.gravity());
+    }
+
+    /** Retrograde at full throttle, or coast once slow enough to settle. */
+    private ControlCommand landingCommand() {
+        PoweredDescent.Command command = descentCommand(env.altitudeOf(body.position().y()));
+        return command.burn()
+                ? ControlCommand.pointAt(command.direction(), command.throttle())
+                : ControlCommand.coast();
     }
 
     private ControlCommand boostCommand(double dt, Target target,

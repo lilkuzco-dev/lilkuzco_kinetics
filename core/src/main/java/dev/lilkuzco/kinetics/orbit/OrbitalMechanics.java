@@ -22,6 +22,8 @@ public final class OrbitalMechanics {
     private final double dayPeriod;
     private final double referenceAltitude;
     private final double minSustainableAltitude;
+    private final double lunarDistance;
+    private final double lunarTransferDeltaV;
 
     public OrbitalMechanics(Constants k) {
         this.mu = k.d("orbit.mu");
@@ -29,6 +31,8 @@ public final class OrbitalMechanics {
         this.dayPeriod = k.d("world.day_seconds");
         this.referenceAltitude = k.d("orbit.reference_orbit_altitude");
         this.minSustainableAltitude = k.d("orbit.minimum_sustainable_altitude");
+        this.lunarDistance = k.d("orbit.lunar_distance");
+        this.lunarTransferDeltaV = k.d("orbit.lunar_transfer_delta_v");
     }
 
     /** Circular orbital speed at radius r (RE1): {@code v = sqrt(mu/r)}. */
@@ -41,6 +45,40 @@ public final class OrbitalMechanics {
     public double period(double semiMajorAxis) {
         if (semiMajorAxis <= 0.0) return 0.0;
         return 2.0 * Math.PI * Math.sqrt(semiMajorAxis * semiMajorAxis * semiMajorAxis / mu);
+    }
+
+    /**
+     * Time to coast a Hohmann transfer between two circular radii (RE2): half the period of the
+     * transfer ellipse, {@code t = pi*sqrt(a^3/mu)} with {@code a = (r1+r2)/2}.
+     *
+     * <p>Exact, and the reason a trans-lunar coast has a duration nobody had to invent. Between the
+     * reference orbit and the Moon it comes out at 99,747 s - 27.7 hours, against reality's 3.0
+     * days for the same manoeuvre. Consumers are free to play that back faster; the number itself
+     * is not negotiable.
+     */
+    public double hohmannTransferTime(double r1, double r2) {
+        if (r1 <= 0.0 || r2 <= 0.0) return 0.0;
+        return period((r1 + r2) / 2.0) / 2.0;
+    }
+
+    /**
+     * Delta-v for the first burn of a Hohmann transfer (RE2): the difference between the transfer
+     * ellipse's perigee speed and the circular speed already held.
+     */
+    public double hohmannFirstBurn(double r1, double r2) {
+        if (r1 <= 0.0 || r2 <= 0.0) return 0.0;
+        return Math.abs(visViva(r1, (r1 + r2) / 2.0) - circularVelocity(r1));
+    }
+
+    /** Distance to the Moon, m. Scaled from reality by the same factor as the planet's radius. */
+    public double lunarDistance() { return lunarDistance; }
+
+    /** Budgeted trans-lunar injection cost from the reference orbit, m/s. */
+    public double lunarTransferDeltaV() { return lunarTransferDeltaV; }
+
+    /** Coast time from the reference orbit to the Moon, s of simulated time. */
+    public double lunarTransferTime() {
+        return hohmannTransferTime(radiusForAltitude(referenceAltitude), lunarDistance);
     }
 
     /** Mean motion, rad/s. */

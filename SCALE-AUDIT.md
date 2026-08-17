@@ -30,6 +30,10 @@ Everything else in the table below is a *derived consequence* of those three, or
 | `orbit.reference_orbit_period_target` | 1,200 | 5,556 | 4.63 | s | yes |
 | `orbit.reference_orbit_velocity` | 1819.5 | 7,670 | 4.2154 | m/s | yes |
 | `orbit.delta_v_to_orbit` | 2,230 | 9,400 | 4.2152 | m/s | yes |
+| `orbit.lunar_distance` | 2.06650e+07 | 384,400,000 | 18.60146 | m | yes |
+| `orbit.lunar_transfer_delta_v` | 740.1 | 3,120 | 4.215647 | m/s | yes |
+| `orbit.lunar_orbit_insertion_delta_v` | 213.5 | 900 | 4.215457 | m/s | yes |
+| `orbit.lunar_descent_delta_v` | 443.6 | 1,870 | 4.215509 | m/s | yes |
 
 Every declared factor reconstructs its own real value to within 0.1%. The audit checks this rather than trusting the declaration — a factor that disagreed with its own values would be a bookkeeping bug, and it would appear here rather than in a trajectory a month later.
 
@@ -77,4 +81,12 @@ Every scaled constant carries the reasoning for its value.
 **`orbit.reference_orbit_velocity`** — Circular velocity at the reference altitude, sqrt(mu/r). Derived, listed here because the delta-v budget and the exhaust-velocity scale are both keyed to it.
 
 **`orbit.delta_v_to_orbit`** — Budget including gravity and drag losses (RD3). Scaled from the real 9400 m/s LEO budget by holding the losses ratio constant: reality pays 9400/7670 = 1.2256 x orbital velocity, so 1.2256 x 1819.5 = 2230 m/s. That leaves ~410 m/s of losses, the same 18% overhead reality pays.
+
+**`orbit.lunar_distance`** — Distance to the Moon, scaled by the SAME factor as planet_radius (18.6015x) rather than chosen. Holding the Moon at the real 60.34 planetary radii is what keeps the transfer geometry honest: the Hohmann transfer time and the trans-lunar delta-v below both fall out of this distance and mu, and neither was picked to feel right. Real: 384,400 km, 60.34 Earth radii.
+
+**`orbit.lunar_transfer_delta_v`** — Trans-lunar injection from the reference orbit, scaled by the velocity factor 4.2154 that delta_v_to_orbit already uses. Real TLI is ~3120 m/s on top of a 9400 m/s LEO budget, so the Moon costs 1.332x reaching orbit - and through Tsiolkovsky's logarithm, roughly three and a half times the vehicle. That multiplier is the point of the tier above orbital, and it is inherited from reality rather than invented.
+
+**`orbit.lunar_orbit_insertion_delta_v`** — Braking into lunar orbit on arrival, scaled by the same velocity factor 4.2154. SCALED, NOT DERIVED, and that distinction is deliberate: deriving it would need a lunar mu and radius, i.e. a second gravitational body in the model, which Phase B does not have. The Moon here is a destination with a surface gravity, not a primary with its own orbits. Real Apollo LOI was about 900 m/s. Stated so a later phase that does add lunar orbits knows exactly which number becomes derived.
+
+**`orbit.lunar_descent_delta_v`** — Powered descent to the lunar surface, scaled by the velocity factor 4.2154. Scaled rather than derived for the same reason as lunar_orbit_insertion_delta_v. This is the number that makes landing a rocketry problem instead of a cutscene: with no atmosphere there is nothing to brake against, so every metre per second of arrival speed must be cancelled by the engine (RD1). Real figure: ~1870 m/s from low lunar orbit.
 

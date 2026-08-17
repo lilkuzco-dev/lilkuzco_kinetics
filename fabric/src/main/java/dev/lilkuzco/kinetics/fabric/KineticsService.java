@@ -118,7 +118,10 @@ public final class KineticsService {
         DimensionContext ctx = dimensions.get(dimension);
         if (ctx == null) return null;
 
-        FlightPhase initial = profile.isPowered() ? FlightPhase.RAIL : FlightPhase.DESCENT;
+        // A lander is powered but is not on a rail: it arrives already falling, and putting it
+        // through the liftoff T/W gate would fail a vehicle that never intended to lift off.
+        FlightPhase initial = mission == FlightDirector.Mission.LANDING ? FlightPhase.DESCENT
+                : profile.isPowered() ? FlightPhase.RAIL : FlightPhase.DESCENT;
 
         // Initial attitude. A body with velocity points along it; a body without one points
         // UP if it is on a rail and along +Z otherwise.

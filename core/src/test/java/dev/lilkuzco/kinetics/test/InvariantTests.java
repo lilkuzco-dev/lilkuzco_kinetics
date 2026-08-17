@@ -536,11 +536,19 @@ public final class InvariantTests {
                 + FlightPhase.values().length + " phases");
         h.isTrue("TERMINATED is absorbing",
                 FlightPhase.LEGAL.get(FlightPhase.TERMINATED).isEmpty(), "no way out");
-        h.isTrue("thrust exists only in BOOST and TERMINAL",
+        h.isTrue("thrust exists only in BOOST, TERMINAL and LANDING",
                 java.util.Arrays.stream(FlightPhase.values())
-                        .filter(FlightPhase::isPowered).toList()
-                        .equals(List.of(FlightPhase.BOOST, FlightPhase.TERMINAL)),
-                "TERMINAL is powered because a short-burn interceptor arrives before burnout");
+                        .filter(FlightPhase::isPowered).collect(
+                                java.util.stream.Collectors.toSet())
+                        .equals(java.util.Set.of(FlightPhase.BOOST, FlightPhase.TERMINAL,
+                                FlightPhase.LANDING)),
+                "TERMINAL because a short-burn interceptor arrives before burnout; LANDING "
+                        + "because a retro-burn is thrust by definition");
+        h.isTrue("every powered phase can reach a terminal state",
+                java.util.Arrays.stream(FlightPhase.values()).filter(FlightPhase::isPowered)
+                        .allMatch(phase -> FlightPhase.LEGAL.get(phase).stream()
+                                .anyMatch(FlightPhase::isTerminal)),
+                "no phase can burn forever");
         h.endSuite();
     }
 }

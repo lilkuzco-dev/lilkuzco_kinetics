@@ -168,6 +168,21 @@ public final class Sim {
 
     public static Integrator integrator(Constants k) { return new Integrator(k); }
 
+    /**
+     * An airless world with lunar gravity and a floor to land on.
+     *
+     * <p>The floor is the point: a landing test in {@code WorldProbe.empty()} has nothing to
+     * arrive at, so a burn that stops the vehicle dead and a burn that does nothing produce the
+     * same "never landed" result.
+     */
+    public static Environment moon(Constants k, int groundY) {
+        return new Environment(k,
+                dev.lilkuzco.kinetics.env.Atmosphere.vacuum(k),
+                dev.lilkuzco.kinetics.env.WindField.disabled(k),
+                dev.lilkuzco.kinetics.env.WorldProbe.flatGround(groundY),
+                k.d("gravity.dimension_scalars.moon"));
+    }
+
     /** A vacuum environment at 1 g: no drag, no lift, vacuum Isp everywhere. */
     public static Environment vacuum(Constants k) {
         return new Environment(k,

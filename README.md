@@ -72,7 +72,7 @@ somewhere in flight" is not a diagnosable report.
 
 ## What the tests actually check
 
-148 checks, ~24 seconds, no network.
+168 checks, ~25 seconds, no network.
 
 **Closed-form cross-checks** compare what the simulation produced against the published equation,
 computed independently — terminal velocity, drag-aware ballistic range, Tsiolkovsky delta-v,

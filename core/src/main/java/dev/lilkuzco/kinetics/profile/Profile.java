@@ -31,6 +31,19 @@ public record Profile(
 
     public Profile {
         stages = List.copyOf(stages);
+        // A body must still have mass after its last stage is shed, because kinetics DOES shed it
+        // - see FlightDirector.onFinalBurnout. A profile with no payload mass therefore ends the
+        // flight at zero kg, and the very next force divided by that mass is NaN. I1 catches it,
+        // loudly and correctly, several seconds after the profile that caused it went in.
+        //
+        // Rejecting it here turns a mid-flight P0 into an unmistakable message at construction.
+        // There is no such thing as a massless vehicle; the payload figure is the airframe that
+        // never stages away, and it is zero only by mistake.
+        if (!(payloadDryMass > 0.0)) {
+            throw new IllegalArgumentException("profile '" + id + "' has payloadDryMass "
+                    + payloadDryMass + "; a body must have mass after its last stage is shed, "
+                    + "or the flight ends at zero kg and every force becomes NaN");
+        }
     }
 
     public boolean isPowered() { return !stages.isEmpty(); }

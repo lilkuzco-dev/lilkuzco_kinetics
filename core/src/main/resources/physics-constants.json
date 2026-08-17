@@ -5,7 +5,6 @@
     "scale_philosophy": "One block = one metre and gravity is Earth's, so in-world flight runs in true SI and player intuition holds. Exactly two deliberate compressions exist, both recorded here and both rendered by the I11 scale audit: the atmosphere's scale height, and the planet's radius.",
     "version": "0.1.0"
   },
-
   "world": {
     "meters_per_block": {
       "value": 1.0,
@@ -33,7 +32,6 @@
       "source_note": "One Minecraft day = 24000 ticks = 20 min. Rotation period of the planet, used by the rotating-frame ground track (RE5b)."
     }
   },
-
   "gravity": {
     "g0": {
       "value": 9.80665,
@@ -55,7 +53,6 @@
       }
     }
   },
-
   "atmosphere": {
     "rho_sea_level": {
       "value": 1.225,
@@ -77,7 +74,7 @@
       "source_note": "Virtual Karman line: the drag-negligible boundary and the orbital-insertion handoff altitude. Sits at y=313, just inside the build ceiling, so it is physically reachable. Its real-altitude equivalent is 38.6 km rather than the real Karman line's 100 km - the honest consequence of COMPRESSION 1, recorded rather than hidden."
     },
     "rho_floor": {
-      "value": 1.0e-9,
+      "value": 1e-09,
       "units": "kg/m^3",
       "source_note": "Numerical floor. Below this the atmosphere is treated as vacuum, so drag and lift are exactly zero rather than denormal (RA4/I1)."
     },
@@ -92,7 +89,6 @@
       "source_note": "Speed of sound at the top of the modelled column (~-56 C, real stratosphere). a falls with temperature, not density; interpolated linearly against normalised altitude."
     }
   },
-
   "aerodynamics": {
     "reference_drag_coefficients": {
       "sphere": {
@@ -189,7 +185,6 @@
       }
     }
   },
-
   "propulsion": {
     "_isp_note": "Profiles declare REAL specific impulse - 311 s for kerolox, 450 s for hydrolox - because those are the numbers an engine is recognised by and the values RD2 asks to be stored. The simulation divides the resulting exhaust velocity by exhaust_velocity_scale before using it. Both numbers are therefore always visible: the real Isp in the profile, the scale here, and the product in the I11 audit.",
     "exhaust_velocity_scale": {
@@ -262,14 +257,13 @@
       "source_note": "Healthy first-stage T/W; below this gravity losses grow sharply (RD5)."
     }
   },
-
   "orbit": {
     "_frame_note": "There is ONE frame. A block is a metre in orbit exactly as it is on the ground, gravity is the same 9.80665 m/s^2 in both, and no conversion happens at the Karman line. Orbital altitudes are simply far above the build limit, which is why satellites live in a registry instead of as entities. The atmosphere's compressed scale height changes only how density varies with altitude - it does not compress the length axis, so nothing else has to be rescaled.",
     "planet_radius": {
       "value": 342500.0,
       "units": "m",
       "real_value": 6371000.0,
-      "scale_factor": 18.601459854014597,
+      "scale_factor": 18.601459854014596,
       "source_note": "COMPRESSION 2 of 2, and the only fiction in the orbital model. Earth's surface gravity on a 342.5 km body - Earth is 6371 km, so 18.6x smaller, which makes this world implausibly dense. It is the free parameter: fixing g at Earth's value and demanding a 20-minute orbit determines the radius, and this is what came out. A smaller planet is genuinely easier to orbit, and the delta-v budget below reflects that honestly rather than papering over it."
     },
     "mu": {
@@ -331,9 +325,36 @@
       "value": 30.0,
       "units": "deg",
       "source_note": "Default sensor half-angle for footprint geometry. At the reference altitude this projects a 2887 m ground radius, which the ground track crosses in about 3.2 s at 1819.5 m/s - a real observation window, not an instant."
+    },
+    "lunar_distance": {
+      "value": 20665044.7,
+      "units": "m",
+      "real_value": 384400000.0,
+      "scale_factor": 18.60145988457504,
+      "source_note": "Distance to the Moon, scaled by the SAME factor as planet_radius (18.6015x) rather than chosen. Holding the Moon at the real 60.34 planetary radii is what keeps the transfer geometry honest: the Hohmann transfer time and the trans-lunar delta-v below both fall out of this distance and mu, and neither was picked to feel right. Real: 384,400 km, 60.34 Earth radii."
+    },
+    "lunar_transfer_delta_v": {
+      "value": 740.1,
+      "units": "m/s",
+      "real_value": 3120.0,
+      "scale_factor": 4.215646534252128,
+      "source_note": "Trans-lunar injection from the reference orbit, scaled by the velocity factor 4.2154 that delta_v_to_orbit already uses. Real TLI is ~3120 m/s on top of a 9400 m/s LEO budget, so the Moon costs 1.332x reaching orbit - and through Tsiolkovsky's logarithm, roughly three and a half times the vehicle. That multiplier is the point of the tier above orbital, and it is inherited from reality rather than invented."
+    },
+    "lunar_orbit_insertion_delta_v": {
+      "value": 213.5,
+      "units": "m/s",
+      "real_value": 900.0,
+      "scale_factor": 4.215456674473068,
+      "source_note": "Braking into lunar orbit on arrival, scaled by the same velocity factor 4.2154. SCALED, NOT DERIVED, and that distinction is deliberate: deriving it would need a lunar mu and radius, i.e. a second gravitational body in the model, which Phase B does not have. The Moon here is a destination with a surface gravity, not a primary with its own orbits. Real Apollo LOI was about 900 m/s. Stated so a later phase that does add lunar orbits knows exactly which number becomes derived."
+    },
+    "lunar_descent_delta_v": {
+      "value": 443.6,
+      "units": "m/s",
+      "real_value": 1870.0,
+      "scale_factor": 4.215509467989179,
+      "source_note": "Powered descent to the lunar surface, scaled by the velocity factor 4.2154. Scaled rather than derived for the same reason as lunar_orbit_insertion_delta_v. This is the number that makes landing a rocketry problem instead of a cutscene: with no atmosphere there is nothing to brake against, so every metre per second of arrival speed must be cancelled by the engine (RD1). Real figure: ~1870 m/s from low lunar orbit."
     }
   },
-
   "reentry": {
     "sutton_graves_k": {
       "value": 0.00017415,
@@ -356,7 +377,6 @@
       "source_note": "Default q_dot at which a reentry-overheat EVENT fires. Consumers decide consequences (I10)."
     }
   },
-
   "guidance": {
     "pn_gain_default": {
       "value": 4.0,
@@ -409,7 +429,6 @@
       "source_note": "How long a seeker coasts toward the last predicted intercept after losing lock before going inertial (RC6)."
     }
   },
-
   "sensors": {
     "radar_reference_range": {
       "value": 250.0,
@@ -454,7 +473,6 @@
       "source_note": "Block-sampling step for radar-horizon line of sight (RF2). Half a block, so no single block is stepped over."
     }
   },
-
   "limits": {
     "g_limit_default": {
       "value": 30.0,
@@ -522,7 +540,7 @@
       "source_note": "Default commanded attitude slew rate (RE6/I12)."
     },
     "quaternion_norm_tolerance": {
-      "value": 1.0e-6,
+      "value": 1e-06,
       "units": "dimensionless",
       "source_note": "Permitted deviation of the orientation quaternion from unit norm after any step (I12)."
     },
@@ -550,9 +568,13 @@
       "value": 0.02,
       "units": "fraction",
       "source_note": "Closed-form cross-check tolerance for the drag-aware range solver."
+    },
+    "lunar_transfer_delta_v_tolerance": {
+      "value": 0.02,
+      "units": "fraction",
+      "source_note": "How far the BUDGETED trans-lunar delta-v may sit from the vis-viva burn the transfer actually needs. Not zero on purpose: the budget is scaled from reality's 3120 m/s by the velocity factor, while the vis-viva figure comes out of this world's own mu and radii. They agree to about 2 m/s, which is the check - two independent routes to the same number. A wide drift would mean the scale mapping had broken somewhere."
     }
   },
-
   "wind": {
     "enabled_default": {
       "value": 0.0,
@@ -585,7 +607,6 @@
       "source_note": "Period over which the wind field rotates. Derived from world time, so it is reproducible from (seed, position, time) alone (RB7/I7)."
     }
   },
-
   "dispersion": {
     "default_cep": {
       "value": 3.0,
@@ -596,6 +617,23 @@
       "value": 0.8493218,
       "units": "dimensionless",
       "source_note": "CEP = 1.1774 * sigma for a circular normal distribution, so sigma = CEP * 0.84932. Converts the stated CEP into the sampling parameter."
+    }
+  },
+  "landing": {
+    "burn_trigger_margin": {
+      "value": 1.08,
+      "units": "fraction",
+      "source_note": "How much earlier than the ideal suicide burn the engine lights. The closed-form burn height leaves zero slack, so a body that is one tick late is already below the altitude it needed and cannot recover. 8% buys back the discretisation error at the cost of a brief hover. Real landers carry far more margin than this; a tighter number here would be more elegant and less survivable."
+    },
+    "touchdown_speed": {
+      "value": 2.0,
+      "units": "m/s",
+      "source_note": "Speed at which the retro-burn stops and the vehicle is allowed to settle. Continuing to burn below this is how a lander empties its tanks hovering three metres up. Apollo's LM touched down at about 1 m/s vertical."
+    },
+    "min_net_deceleration": {
+      "value": 0.5,
+      "units": "m/s^2",
+      "source_note": "Least net deceleration - thrust over mass, minus local gravity - at which a landing burn is attempted at all. Below it the vehicle cannot arrest its fall no matter how long it burns, and firing anyway means arriving fast AND empty. Reporting the burn as impossible is the honest failure (RD3)."
     }
   }
 }
