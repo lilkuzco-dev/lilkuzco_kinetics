@@ -34,8 +34,8 @@ So a heliocentric frame does not make Mars dramatically dearer than the Moon in 
 makes Mars is:
 
 - **Far in time.** 259 days of transfer against the Moon's 27.7 hours — 224× longer.
-- **Available sometimes.** The synodic period is 780 days. You go when the window opens, or you do
-  not go.
+- **Cheap sometimes.** The synodic period is 780 days. Off-window you can still go — you just pay
+  for it, which is the ruling at the foot of this document.
 - **Hard to arrive at.** Capture and entry, not just a burn.
 
 **That is the real prize, and it should be stated plainly rather than oversold.** If the goal is
@@ -124,8 +124,31 @@ inserted.
 Phases 1–3 are pure additions with no way to break an existing flight. Phase 4 is where the risk
 is, and it is the first phase where a golden could move.
 
-## Open question for the ruling that follows
+## Launch windows: SOFT, with a real delta-v penalty
 
-`cosmos/PLANETS.md` still carries it: **hard launch windows or soft?** Hard means you wait, which is
-what makes a window a window. Soft means you can always go, badly. I lean hard, because a window
-you can ignore is a number on a screen — but it is a server-social decision, not a physics one.
+**Decided.** You may depart at any time. Off-window you pay more delta-v — a lot more, computed
+from the actual phase angle — and the transfer takes longer. Nothing is ever greyed out.
+
+I argued for hard windows first and was wrong twice over.
+
+**It contradicts the law this campaign already runs on.** The launch pad "never refuses a launch it
+merely disapproves of": it will light an under-fuelled rocket that is going to fall in the sea,
+having told the player exactly how many m/s it is short. Failing honestly is the design. A hard
+window is the opposite — a refusal, dressed as realism, in a program whose entire pitch is that the
+arithmetic decides and then gets out of the way.
+
+**And the "realistic" option is the soft one.** Real mission planners are not blocked by a closed
+window; they are *charged* by it. C3 rises, the trajectory gets uglier, the payload shrinks. NASA
+launching outside a Mars window is not impossible, it is expensive. Modelling that as a locked door
+is less faithful than modelling it as a price.
+
+What this buys, which a hard window does not: **a decision instead of a wait.** A player with a
+window nine minutes out and a rocket already stacked has something to weigh — burn the surplus now,
+or hold and save it. A player facing a locked door has only the door.
+
+The rhythm survives either way. A cheap window still arrives on a schedule anyone can compute, and
+the pass predictor already exists to tell them when.
+
+**Design note for whoever builds it:** show the penalty the way the pad shows a shortfall — the
+number, and what waiting would save. "2,140 m/s now, 854 m/s in 6 minutes" is a decision. "Window
+closed" is a wall.
