@@ -111,4 +111,6 @@ amendments made at the v0.1.0 gate.
 
 ## Licence
 
-MIT. All code original; no third-party code or assets. See `../ASSETS-ORIGIN.md`.
+MIT. All code original; no third-party code or assets — kinetics consumed no quarry at all.
+The campaign's full provenance record, including the quarantine list, is versioned at
+[lilkuzco_cosmos/provenance](https://github.com/lilkuzco-dev/lilkuzco_cosmos/tree/main/provenance).
